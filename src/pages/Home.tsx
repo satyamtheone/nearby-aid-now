@@ -1,54 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Users, MessageCircle, Clock, Navigation } from 'lucide-react';
+import { MapPin, Users, MessageCircle, Clock, Navigation, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-
-interface HelpRequest {
-  id: string;
-  message: string;
-  category: string;
-  timestamp: Date;
-  distance: number;
-  userName: string;
-  isUrgent: boolean;
-}
+import { useAuth } from '@/hooks/useAuth';
+import { useHelpRequests } from '@/hooks/useHelpRequests';
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { helpRequests, loading } = useHelpRequests();
   const [location, setLocation] = useState("Getting location...");
-  const [onlineUsers, setOnlineUsers] = useState(23);
-  const [helpRequests, setHelpRequests] = useState<HelpRequest[]>([
-    {
-      id: '1',
-      message: 'Any chemist open near me? Need urgent medicines',
-      category: 'Medical',
-      timestamp: new Date(Date.now() - 5 * 60000),
-      distance: 0.3,
-      userName: 'Priya S.',
-      isUrgent: true
-    },
-    {
-      id: '2',
-      message: 'Looking for a good plumber, my tap is leaking badly',
-      category: 'Other',
-      timestamp: new Date(Date.now() - 15 * 60000),
-      distance: 0.8,
-      userName: 'Raj M.',
-      isUrgent: false
-    },
-    {
-      id: '3',
-      message: 'Anyone know a good restaurant delivering late night?',
-      category: 'Food',
-      timestamp: new Date(Date.now() - 25 * 60000),
-      distance: 1.2,
-      userName: 'Anita K.',
-      isUrgent: false
-    }
-  ]);
+  const [onlineUsers] = useState(23);
 
   useEffect(() => {
     // Simulate getting user location
@@ -57,8 +22,9 @@ const Home = () => {
     }, 2000);
   }, []);
 
-  const formatTime = (timestamp: Date) => {
-    const diff = Date.now() - timestamp.getTime();
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const diff = Date.now() - date.getTime();
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
@@ -76,6 +42,11 @@ const Home = () => {
     return colors[category as keyof typeof colors] || colors.Other;
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       {/* Header */}
@@ -89,14 +60,29 @@ const Home = () => {
                 <p className="font-semibold text-gray-900">{location}</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="flex items-center space-x-1 text-green-600">
-                <Users className="h-4 w-4" />
-                <span className="text-sm font-medium">{onlineUsers}</span>
+            <div className="flex items-center space-x-3">
+              <div className="text-right">
+                <div className="flex items-center space-x-1 text-green-600">
+                  <Users className="h-4 w-4" />
+                  <span className="text-sm font-medium">{onlineUsers}</span>
+                </div>
+                <p className="text-xs text-gray-500">nearby</p>
               </div>
-              <p className="text-xs text-gray-500">nearby</p>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleSignOut}
+                className="p-2"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
+          {user && (
+            <p className="text-xs text-gray-500 mt-1">
+              Welcome, {user.email}
+            </p>
+          )}
         </div>
       </div>
 
@@ -124,57 +110,81 @@ const Home = () => {
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {helpRequests.map((request) => (
-              <Card key={request.id} className="hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs ${getCategoryColor(request.category)}`}
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="pb-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2 mt-2"></div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {helpRequests.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <p className="text-gray-500">No help requests yet. Be the first to ask for help!</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                helpRequests.map((request) => (
+                  <Card key={request.id} className="hover:shadow-md transition-shadow duration-200">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${getCategoryColor(request.category)}`}
+                            >
+                              {request.category}
+                            </Badge>
+                            {request.is_urgent && (
+                              <Badge variant="destructive" className="text-xs">
+                                Urgent
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm font-medium text-gray-900 leading-relaxed">
+                            {request.message}
+                          </p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4 text-xs text-gray-500">
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatTime(request.created_at)}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Navigation className="h-3 w-3" />
+                            <span>0.5 km away</span>
+                          </div>
+                          <span>by {request.profiles?.username || 'Anonymous'}</span>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => navigate('/chat')}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
                         >
-                          {request.category}
-                        </Badge>
-                        {request.isUrgent && (
-                          <Badge variant="destructive" className="text-xs">
-                            Urgent
-                          </Badge>
-                        )}
+                          Reply
+                        </Button>
                       </div>
-                      <p className="text-sm font-medium text-gray-900 leading-relaxed">
-                        {request.message}
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-xs text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatTime(request.timestamp)}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Navigation className="h-3 w-3" />
-                        <span>{request.distance} km away</span>
-                      </div>
-                      <span>by {request.userName}</span>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => navigate('/chat')}
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    >
-                      Reply
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

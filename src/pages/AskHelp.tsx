@@ -8,19 +8,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { useHelpRequests } from '@/hooks/useHelpRequests';
+import type { Database } from '@/integrations/supabase/types';
 
 const AskHelp = () => {
   const navigate = useNavigate();
-  const [category, setCategory] = useState('');
+  const { createHelpRequest } = useHelpRequests();
+  const [category, setCategory] = useState<Database['public']['Enums']['help_category'] | ''>('');
   const [message, setMessage] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categories = [
-    { value: 'Medical', label: 'Medical', icon: '🏥' },
-    { value: 'Food', label: 'Food & Groceries', icon: '🍽️' },
-    { value: 'Vehicle', label: 'Vehicle & Transport', icon: '🚗' },
-    { value: 'Other', label: 'Other', icon: '🤝' }
+    { value: 'Medical' as const, label: 'Medical', icon: '🏥' },
+    { value: 'Food' as const, label: 'Food & Groceries', icon: '🍽️' },
+    { value: 'Vehicle' as const, label: 'Vehicle & Transport', icon: '🚗' },
+    { value: 'Other' as const, label: 'Other', icon: '🤝' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,15 +39,36 @@ const AskHelp = () => {
 
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Help Request Sent!",
-        description: "Your request has been shared with nearby users.",
+    try {
+      const { error } = await createHelpRequest({
+        category,
+        message: message.trim(),
+        is_urgent: isUrgent,
+        location_name: 'Noida Sector 135',
       });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Help Request Sent!",
+          description: "Your request has been shared with nearby users.",
+        });
+        navigate('/');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send help request. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
       setIsSubmitting(false);
-      navigate('/');
-    }, 2000);
+    }
   };
 
   return (
@@ -89,7 +113,7 @@ const AskHelp = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category *
                 </label>
-                <Select value={category} onValueChange={setCategory}>
+                <Select value={category} onValueChange={(value: Database['public']['Enums']['help_category']) => setCategory(value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>

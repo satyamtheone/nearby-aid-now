@@ -5,55 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-
-interface Message {
-  id: string;
-  userName: string;
-  message: string;
-  timestamp: Date;
-  isOwnMessage: boolean;
-  userLocation: string;
-}
+import { useAuth } from '@/hooks/useAuth';
+import { useMessages } from '@/hooks/useMessages';
+import { toast } from '@/hooks/use-toast';
 
 const Chat = () => {
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [newMessage, setNewMessage] = useState('');
   const [onlineUsers] = useState(15);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      userName: 'Priya S.',
-      message: 'Hi everyone! Any chemist open near me? Need urgent medicines for fever',
-      timestamp: new Date(Date.now() - 10 * 60000),
-      isOwnMessage: false,
-      userLocation: '0.3 km away'
-    },
-    {
-      id: '2',
-      userName: 'Raj M.',
-      message: 'Hey Priya, there\'s a 24/7 pharmacy near Sector 137 metro station. Apollo Pharmacy',
-      timestamp: new Date(Date.now() - 8 * 60000),
-      isOwnMessage: false,
-      userLocation: '0.8 km away'
-    },
-    {
-      id: '3',
-      userName: 'You',
-      message: 'I can help! I\'m going that way in 10 mins. Can drop off medicines if needed',
-      timestamp: new Date(Date.now() - 5 * 60000),
-      isOwnMessage: true,
-      userLocation: 'You'
-    },
-    {
-      id: '4',
-      userName: 'Priya S.',
-      message: 'That would be amazing! Thank you so much 🙏',
-      timestamp: new Date(Date.now() - 2 * 60000),
-      isOwnMessage: false,
-      userLocation: '0.3 km away'
-    }
-  ]);
+  const { user } = useAuth();
+  const { messages, loading, sendMessage } = useMessages();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,25 +25,26 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    const message: Message = {
-      id: Date.now().toString(),
-      userName: 'You',
-      message: newMessage,
-      timestamp: new Date(),
-      isOwnMessage: true,
-      userLocation: 'You'
-    };
-
-    setMessages(prev => [...prev, message]);
+    const messageText = newMessage.trim();
     setNewMessage('');
+
+    const { error } = await sendMessage(messageText);
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+      setNewMessage(messageText); // Restore the message
+    }
   };
 
-  const formatTime = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString('en-US', { 
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
       hour12: true 
@@ -124,44 +87,61 @@ const Chat = () => {
 
       {/* Messages */}
       <div className="flex-1 max-w-md mx-auto w-full px-4 py-4 overflow-y-auto">
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isOwnMessage ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                  message.isOwnMessage
-                    ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white'
-                    : 'bg-white border shadow-sm'
-                }`}
-              >
-                {!message.isOwnMessage && (
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-blue-600">
-                      {message.userName}
-                    </span>
-                    <Badge variant="outline" className="text-xs text-gray-500 border-gray-300">
-                      {message.userLocation}
-                    </Badge>
-                  </div>
-                )}
-                <p className={`text-sm leading-relaxed ${
-                  message.isOwnMessage ? 'text-white' : 'text-gray-900'
-                }`}>
-                  {message.message}
-                </p>
-                <p className={`text-xs mt-1 ${
-                  message.isOwnMessage ? 'text-blue-100' : 'text-gray-500'
-                }`}>
-                  {formatTime(message.timestamp)}
-                </p>
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No messages yet. Start the conversation!</p>
               </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
+            ) : (
+              messages.map((message) => {
+                const isOwnMessage = message.user_id === user?.id;
+                const userName = isOwnMessage ? 'You' : (message.profiles?.username || 'Anonymous');
+                
+                return (
+                  <div
+                    key={message.id}
+                    className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                        isOwnMessage
+                          ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white'
+                          : 'bg-white border shadow-sm'
+                      }`}
+                    >
+                      {!isOwnMessage && (
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-blue-600">
+                            {userName}
+                          </span>
+                          <Badge variant="outline" className="text-xs text-gray-500 border-gray-300">
+                            {message.location_name || 'Unknown location'}
+                          </Badge>
+                        </div>
+                      )}
+                      <p className={`text-sm leading-relaxed ${
+                        isOwnMessage ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {message.message}
+                      </p>
+                      <p className={`text-xs mt-1 ${
+                        isOwnMessage ? 'text-blue-100' : 'text-gray-500'
+                      }`}>
+                        {formatTime(message.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Message Input */}
