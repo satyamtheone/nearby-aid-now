@@ -5,7 +5,10 @@ import { useAuth } from './useAuth';
 import type { Database } from '@/integrations/supabase/types';
 
 type Message = Database['public']['Tables']['messages']['Row'] & {
-  profiles: Database['public']['Tables']['profiles']['Row'];
+  profiles: {
+    username: string | null;
+    full_name: string | null;
+  };
 };
 
 export function useMessages() {
