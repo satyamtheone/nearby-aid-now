@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +22,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
+  // Get location name from coordinates using reverse geocoding
+  const getLocationName = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=YOUR_MAPBOX_TOKEN&types=place,locality,neighborhood`
+      );
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const place = data.features[0];
+        return place.place_name || place.text || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      }
+    } catch (error) {
+      console.error('Error getting location name:', error);
+    }
+    
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  };
+
   // Get user's live location
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -30,8 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         async (position) => {
           const { latitude, longitude } = position.coords;
           
-          // Reverse geocoding to get location name (simplified)
-          const locationName = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
+          console.log('Got user location:', latitude, longitude);
+          
+          // Get readable location name
+          const locationName = await getLocationName(latitude, longitude);
           
           setUserLocation({
             lat: latitude,
@@ -46,11 +66,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         (error) => {
           console.error('Error getting location:', error);
-          // Fallback to default location
+          // Fallback to default location with proper name
           setUserLocation({
-            lat: 28.5355, // Noida coordinates
+            lat: 28.5355,
             lng: 77.3910,
-            name: "Noida Sector 135"
+            name: "Noida, Uttar Pradesh, India"
           });
         }
       );

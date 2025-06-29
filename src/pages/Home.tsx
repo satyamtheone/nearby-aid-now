@@ -1,17 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Users, MessageCircle, Clock, Navigation, LogOut } from 'lucide-react';
+import { MapPin, Users, MessageCircle, Clock, Navigation, LogOut, Map as MapIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useHelpRequests } from '@/hooks/useHelpRequests';
+import Map from '@/components/Map';
 
 const Home = () => {
   const navigate = useNavigate();
   const { user, signOut, userLocation, nearbyUsersCount } = useAuth();
   const { helpRequests, loading } = useHelpRequests();
+  const [showMap, setShowMap] = useState(false);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -40,6 +42,14 @@ const Home = () => {
 
   const handleRequestReply = (requestId: string) => {
     navigate(`/chat/${requestId}`);
+  };
+
+  // Get user's display name
+  const getUserDisplayName = () => {
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    return user?.email || 'User';
   };
 
   return (
@@ -77,7 +87,7 @@ const Home = () => {
           </div>
           {user && (
             <p className="text-xs text-gray-500 mt-1">
-              Welcome, {user.email}
+              Welcome, {getUserDisplayName()}
             </p>
           )}
         </div>
@@ -92,6 +102,23 @@ const Home = () => {
           <MessageCircle className="mr-2 h-5 w-5" />
           Ask for Help
         </Button>
+
+        {/* Live Users Map Toggle */}
+        <Button 
+          onClick={() => setShowMap(!showMap)}
+          variant="outline"
+          className="w-full h-12 border-blue-200 text-blue-600 hover:bg-blue-50"
+        >
+          <MapIcon className="mr-2 h-5 w-5" />
+          {showMap ? 'Hide' : 'Show'} Live Users Map
+        </Button>
+
+        {/* Map Section */}
+        {showMap && (
+          <div className="space-y-4">
+            <Map />
+          </div>
+        )}
 
         {/* Recent Help Requests */}
         <div>
@@ -165,7 +192,7 @@ const Home = () => {
                             <Navigation className="h-3 w-3" />
                             <span>0.5 km away</span>
                           </div>
-                          <span>by {request.profiles?.username || 'Anonymous'}</span>
+                          <span>by {request.profiles?.full_name || request.profiles?.username || 'Anonymous'}</span>
                         </div>
                         <Button 
                           size="sm" 
