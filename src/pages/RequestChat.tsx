@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRequestMessages } from '@/hooks/useRequestMessages';
 import { useHelpRequests } from '@/hooks/useHelpRequests';
+import { formatTime, formatChatTime } from '@/utils/timeUtils';
 import { toast } from '@/hooks/use-toast';
 
 const RequestChat = () => {
@@ -46,14 +47,6 @@ const RequestChat = () => {
       });
       setNewMessage(messageText); // Restore the message
     }
-  };
-
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
   };
 
   const getCategoryColor = (category: string) => {
@@ -129,9 +122,9 @@ const RequestChat = () => {
                 <div className="flex items-center space-x-4 text-xs text-gray-500">
                   <div className="flex items-center space-x-1">
                     <Clock className="h-3 w-3" />
-                    <span>{new Date(currentRequest.created_at).toLocaleString()}</span>
+                    <span>{formatTime(currentRequest.created_at)}</span>
                   </div>
-                  <span>by {currentRequest.profiles?.username || 'Anonymous'}</span>
+                  <span>by {currentRequest.profiles?.full_name || currentRequest.profiles?.username || 'Anonymous'}</span>
                 </div>
               </CardContent>
             </Card>
@@ -155,7 +148,7 @@ const RequestChat = () => {
             ) : (
               messages.map((message) => {
                 const isOwnMessage = message.user_id === user?.id;
-                const userName = isOwnMessage ? 'You' : (message.profiles?.username || 'Anonymous');
+                const userName = isOwnMessage ? 'You' : (message.profiles?.full_name || message.profiles?.username || 'Anonymous');
                 
                 return (
                   <div
@@ -182,7 +175,7 @@ const RequestChat = () => {
                       <p className={`text-xs mt-1 ${
                         isOwnMessage ? 'text-blue-100' : 'text-gray-500'
                       }`}>
-                        {formatTime(message.created_at)}
+                        {formatChatTime(message.created_at)}
                       </p>
                     </div>
                   </div>

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useHelpRequests } from '@/hooks/useHelpRequests';
+import { formatTime } from '@/utils/timeUtils';
 import Map from '@/components/Map';
 
 const Home = () => {
@@ -14,16 +15,6 @@ const Home = () => {
   const { user, signOut, userLocation, nearbyUsersCount } = useAuth();
   const { helpRequests, loading } = useHelpRequests();
   const [showMap, setShowMap] = useState(false);
-
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const diff = Date.now() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
-  };
 
   const getCategoryColor = (category: string) => {
     const colors = {

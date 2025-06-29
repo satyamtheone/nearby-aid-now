@@ -22,17 +22,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
-  // Get location name from coordinates using reverse geocoding
+  // Get location name from coordinates using free geocoding service
   const getLocationName = async (lat: number, lng: number) => {
     try {
+      // Using free Nominatim OpenStreetMap geocoding service
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=YOUR_MAPBOX_TOKEN&types=place,locality,neighborhood`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`
       );
       const data = await response.json();
       
-      if (data.features && data.features.length > 0) {
-        const place = data.features[0];
-        return place.place_name || place.text || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      if (data && data.display_name) {
+        // Extract relevant parts for a clean location name
+        const address = data.address || {};
+        const parts = [];
+        
+        if (address.suburb || address.neighbourhood) {
+          parts.push(address.suburb || address.neighbourhood);
+        }
+        if (address.city || address.town || address.village) {
+          parts.push(address.city || address.town || address.village);
+        }
+        if (address.state) {
+          parts.push(address.state);
+        }
+        if (address.country) {
+          parts.push(address.country);
+        }
+        
+        return parts.length > 0 ? parts.join(', ') : data.display_name;
       }
     } catch (error) {
       console.error('Error getting location name:', error);
@@ -50,6 +67,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           console.log('Got user location:', latitude, longitude);
           
+          // Show coordinates first, then update with name
+          setUserLocation({
+            lat: latitude,
+            lng: longitude,
+            name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+          });
+
           // Get readable location name
           const locationName = await getLocationName(latitude, longitude);
           
