@@ -10,17 +10,8 @@ import { useHelpRequests } from '@/hooks/useHelpRequests';
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, userLocation, nearbyUsersCount } = useAuth();
   const { helpRequests, loading } = useHelpRequests();
-  const [location, setLocation] = useState("Getting location...");
-  const [onlineUsers] = useState(23);
-
-  useEffect(() => {
-    // Simulate getting user location
-    setTimeout(() => {
-      setLocation("Noida Sector 135");
-    }, 2000);
-  }, []);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -47,6 +38,10 @@ const Home = () => {
     navigate('/auth');
   };
 
+  const handleRequestReply = (requestId: string) => {
+    navigate(`/chat/${requestId}`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       {/* Header */}
@@ -57,14 +52,16 @@ const Home = () => {
               <MapPin className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-500">Your location</p>
-                <p className="font-semibold text-gray-900">{location}</p>
+                <p className="font-semibold text-gray-900">
+                  {userLocation ? userLocation.name : 'Getting location...'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <div className="text-right">
                 <div className="flex items-center space-x-1 text-green-600">
                   <Users className="h-4 w-4" />
-                  <span className="text-sm font-medium">{onlineUsers}</span>
+                  <span className="text-sm font-medium">{nearbyUsersCount}</span>
                 </div>
                 <p className="text-xs text-gray-500">nearby</p>
               </div>
@@ -173,7 +170,7 @@ const Home = () => {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => navigate('/chat')}
+                          onClick={() => handleRequestReply(request.id)}
                           className="text-blue-600 border-blue-200 hover:bg-blue-50"
                         >
                           Reply
