@@ -94,8 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: locationName
           });
 
-          // Update user location in database if user is logged in
-          if (user) {
+          // Update user location in database if user is logged in and session is established
+          if (user && session) {
             await updateUserLocation(latitude, longitude, locationName);
           }
         },
@@ -112,11 +112,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Update user location in database with better presence tracking
+  // Update user location in database with better error handling
   const updateUserLocation = async (lat: number, lng: number, locationName: string) => {
-    if (!user) return;
+    if (!user || !session) {
+      console.log('User or session not available, skipping location update');
+      return;
+    }
 
     try {
+      console.log('Updating user location for user:', user.id);
+      
       const { error } = await supabase
         .from('user_locations')
         .upsert({
@@ -129,17 +134,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error updating location:', error);
+        // Don't throw error, just log it
       } else {
         console.log('Location updated successfully');
       }
     } catch (error) {
       console.error('Error updating location:', error);
+      // Don't throw error, just log it
     }
   };
 
   // Get nearby users count using the new function
   const getNearbyUsersCount = async () => {
-    if (!userLocation) return;
+    if (!userLocation || !user || !session) return;
 
     try {
       const { data, error } = await supabase.rpc('get_nearby_users' as any, {
@@ -162,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Enhanced presence tracking
   const trackUserPresence = async () => {
-    if (!user || !userLocation) return;
+    if (!user || !userLocation || !session) return;
 
     const channel = supabase.channel('user-presence');
     
@@ -193,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Keep location updated every 30 seconds
     const locationUpdateInterval = setInterval(() => {
-      if (userLocation) {
+      if (userLocation && user && session) {
         updateUserLocation(userLocation.lat, userLocation.lng, userLocation.name);
       }
     }, 30000);
@@ -226,20 +233,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (user && session) {
       getCurrentLocation();
-      trackUserPresence();
+      // Add a small delay to ensure session is fully established
+      setTimeout(() => {
+        trackUserPresence();
+      }, 1000);
     }
-  }, [user]);
+  }, [user, session]);
 
   useEffect(() => {
-    if (userLocation && user) {
+    if (userLocation && user && session) {
       getNearbyUsersCount();
       // Update nearby users count every 30 seconds
       const interval = setInterval(getNearbyUsersCount, 30000);
       return () => clearInterval(interval);
     }
-  }, [userLocation, user]);
+  }, [userLocation, user, session]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
