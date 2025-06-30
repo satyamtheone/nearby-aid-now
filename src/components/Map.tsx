@@ -8,12 +8,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OnlineUser {
-  id: string;
+  user_id: string;
   full_name: string;
   username: string;
   location_name: string;
   lat: number;
   lng: number;
+  distance_km: number;
 }
 
 declare global {
@@ -31,14 +32,13 @@ const Map = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isMapVisible, setIsMapVisible] = useState(true);
 
   // Fetch online users with real coordinates from database
   const fetchOnlineUsers = async () => {
     if (!userLocation || !user) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_nearby_users', {
+      const { data, error } = await supabase.rpc('get_nearby_users' as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
         radius_km: 10.0
@@ -50,16 +50,8 @@ const Map = () => {
       }
 
       console.log('Fetched online users:', data);
-      const users = data?.map((item: any) => ({
-        id: item.user_id,
-        full_name: item.full_name || 'Anonymous',
-        username: item.username || 'User',
-        location_name: item.location_name,
-        lat: item.lat,
-        lng: item.lng,
-      })) || [];
-
-      setOnlineUsers(users.filter(u => u.id !== user?.id));
+      const users = (data as OnlineUser[])?.filter(u => u.user_id !== user?.id) || [];
+      setOnlineUsers(users);
     } catch (error) {
       console.error('Error fetching online users:', error);
     }
@@ -246,7 +238,7 @@ const Map = () => {
           ) : (
             <div className="space-y-2">
               {onlineUsers.slice(0, 5).map((user) => (
-                <div key={user.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
+                <div key={user.user_id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
                   <div className="relative">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="text-xs">

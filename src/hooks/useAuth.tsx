@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,16 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+}
+
+interface NearbyUser {
+  user_id: string;
+  full_name: string;
+  username: string;
+  location_name: string;
+  lat: number;
+  lng: number;
+  distance_km: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -131,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!userLocation) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_nearby_users', {
+      const { data, error } = await supabase.rpc('get_nearby_users' as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
         radius_km: 2
@@ -142,7 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setNearbyUsersCount(data?.length || 0);
+      const nearbyUsers = (data as NearbyUser[]) || [];
+      setNearbyUsersCount(nearbyUsers.length);
     } catch (error) {
       console.error('Error getting nearby users:', error);
     }
