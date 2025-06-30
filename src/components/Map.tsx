@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -157,32 +156,6 @@ const Map = () => {
     });
   };
 
-  const cleanAllData = async () => {
-    if (!confirm('Are you sure you want to delete ALL data? This cannot be undone.')) {
-      return;
-    }
-
-    try {
-      // Delete all messages
-      await supabase.from('messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      // Delete all help requests
-      await supabase.from('help_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      
-      // Delete all user locations except current user
-      await supabase.from('user_locations').delete().neq('user_id', user?.id || '');
-      
-      console.log('All data cleaned successfully');
-      alert('All data has been cleaned! You can now test from scratch.');
-      
-      // Refresh the page
-      window.location.reload();
-    } catch (error) {
-      console.error('Error cleaning data:', error);
-      alert('Error cleaning data. Please try again.');
-    }
-  };
-
   useEffect(() => {
     if (userLocation) {
       loadGoogleMapsScript();
@@ -212,19 +185,9 @@ const Map = () => {
             <MapPin className="h-5 w-5" />
             <span>Live Users Map</span>
           </div>
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1 text-green-600">
-              <Users className="h-4 w-4" />
-              <span className="text-sm font-medium">{onlineUsers.length}</span>
-            </div>
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={cleanAllData}
-              className="text-xs"
-            >
-              Clean Data
-            </Button>
+          <div className="flex items-center space-x-1 text-green-600">
+            <Users className="h-4 w-4" />
+            <span className="text-sm font-medium">{onlineUsers.length}</span>
           </div>
         </CardTitle>
       </CardHeader>
