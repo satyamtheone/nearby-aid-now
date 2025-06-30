@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Update user location in database
+  // Update user location in database with better presence tracking
   const updateUserLocation = async (lat: number, lng: number, locationName: string) => {
     if (!user) return;
 
@@ -118,18 +118,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error updating location:', error);
+      } else {
+        console.log('Location updated successfully');
       }
     } catch (error) {
       console.error('Error updating location:', error);
     }
   };
 
-  // Get nearby users count
+  // Get nearby users count using the new function
   const getNearbyUsersCount = async () => {
     if (!userLocation) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_nearby_users_count', {
+      const { data, error } = await supabase.rpc('get_nearby_users', {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
         radius_km: 2
@@ -140,36 +142,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setNearbyUsersCount(data || 0);
+      setNearbyUsersCount(data?.length || 0);
     } catch (error) {
       console.error('Error getting nearby users:', error);
     }
   };
 
-  // Track user presence
+  // Enhanced presence tracking
   const trackUserPresence = async () => {
-    if (!user) return;
+    if (!user || !userLocation) return;
 
-    const channel = supabase.channel('online-users');
+    const channel = supabase.channel('user-presence');
     
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const onlineUsers = Object.keys(state).length;
-        setNearbyUsersCount(onlineUsers);
+        console.log('Online users:', onlineUsers);
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('User joined:', key, newPresences);
+        getNearbyUsersCount();
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('User left:', key, leftPresences);
+        getNearbyUsersCount();
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({
             user_id: user.id,
             online_at: new Date().toISOString(),
-            location: userLocation
+            location: userLocation,
+            full_name: user.user_metadata?.full_name || user.email
           });
         }
       });
 
+    // Keep location updated every 30 seconds
+    const locationUpdateInterval = setInterval(() => {
+      if (userLocation) {
+        updateUserLocation(userLocation.lat, userLocation.lng, userLocation.name);
+      }
+    }, 30000);
+
     return () => {
       channel.unsubscribe();
+      clearInterval(locationUpdateInterval);
     };
   };
 
