@@ -195,6 +195,53 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Updated function to get nearby help requests with proper distance calculation
+CREATE OR REPLACE FUNCTION public.get_nearby_help_requests(
+  user_lat DOUBLE PRECISION,
+  user_lng DOUBLE PRECISION,
+  radius_km DOUBLE PRECISION DEFAULT 10.0
+) RETURNS TABLE (
+  id UUID,
+  user_id UUID,
+  category help_category,
+  message TEXT,
+  is_urgent BOOLEAN,
+  is_resolved BOOLEAN,
+  location_name TEXT,
+  location_point GEOGRAPHY,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  distance_km DOUBLE PRECISION
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    hr.id,
+    hr.user_id,
+    hr.category,
+    hr.message,
+    hr.is_urgent,
+    hr.is_resolved,
+    hr.location_name,
+    hr.location_point,
+    hr.created_at,
+    hr.updated_at,
+    ST_Distance(
+      hr.location_point::geometry,
+      ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)
+    ) / 1000.0 as distance_km
+  FROM public.help_requests hr
+  WHERE hr.is_resolved = false
+    AND hr.location_point IS NOT NULL
+    AND ST_DWithin(
+      hr.location_point::geometry,
+      ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326),
+      radius_km * 1000
+    )
+  ORDER BY distance_km ASC, hr.created_at DESC;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Enable realtime for tables
 ALTER TABLE public.profiles REPLICA IDENTITY FULL;
 ALTER TABLE public.help_requests REPLICA IDENTITY FULL;

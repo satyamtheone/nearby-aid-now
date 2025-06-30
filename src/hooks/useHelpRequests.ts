@@ -9,34 +9,79 @@ type HelpRequest = Database['public']['Tables']['help_requests']['Row'] & {
     username: string | null;
     full_name: string | null;
   };
+  distance_km?: number;
 };
 
 export function useHelpRequests() {
   const [helpRequests, setHelpRequests] = useState<HelpRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const [showAllLocations, setShowAllLocations] = useState(false);
+  const { user, userLocation } = useAuth();
 
   const fetchHelpRequests = async () => {
     try {
-      const { data, error } = await supabase
-        .from('help_requests')
-        .select(`
-          *,
-          profiles (
-            username,
-            full_name
-          )
-        `)
-        .eq('is_resolved', false)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      if (!showAllLocations && userLocation) {
+        // Fetch nearby requests using the geographical function
+        const { data, error } = await supabase.rpc('get_nearby_help_requests', {
+          user_lat: userLocation.lat,
+          user_lng: userLocation.lng,
+          radius_km: 10.0
+        });
 
-      if (error) {
-        console.error('Error fetching help requests:', error);
-        return;
+        if (error) {
+          console.error('Error fetching nearby help requests:', error);
+          return;
+        }
+
+        // Transform the data to match our expected format
+        const transformedData = data?.map((request: any) => ({
+          ...request,
+          profiles: {
+            username: null,
+            full_name: null
+          },
+          distance_km: request.distance_km
+        })) || [];
+
+        // Get profile information for each request
+        const requestsWithProfiles = await Promise.all(
+          transformedData.map(async (request) => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('username, full_name')
+              .eq('id', request.user_id)
+              .single();
+
+            return {
+              ...request,
+              profiles: profile || { username: null, full_name: null }
+            };
+          })
+        );
+
+        setHelpRequests(requestsWithProfiles);
+      } else {
+        // Fetch all requests (original functionality)
+        const { data, error } = await supabase
+          .from('help_requests')
+          .select(`
+            *,
+            profiles (
+              username,
+              full_name
+            )
+          `)
+          .eq('is_resolved', false)
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) {
+          console.error('Error fetching help requests:', error);
+          return;
+        }
+
+        setHelpRequests(data || []);
       }
-
-      setHelpRequests(data || []);
     } catch (error) {
       console.error('Error fetching help requests:', error);
     } finally {
@@ -52,6 +97,7 @@ export function useHelpRequests() {
   }) => {
     console.log('Creating help request with data:', request);
     console.log('Current user:', user);
+    console.log('User location:', userLocation);
 
     if (!user) {
       console.error('User not authenticated');
@@ -78,7 +124,8 @@ export function useHelpRequests() {
         category: request.category,
         message: request.message,
         is_urgent: request.is_urgent,
-        location_name: request.location_name || null,
+        location_name: request.location_name || userLocation?.name || null,
+        location_point: userLocation ? `POINT(${userLocation.lng} ${userLocation.lat})` : null,
       };
 
       console.log('Inserting data:', insertData);
@@ -111,6 +158,10 @@ export function useHelpRequests() {
     }
   };
 
+  const toggleLocationFilter = () => {
+    setShowAllLocations(!showAllLocations);
+  };
+
   useEffect(() => {
     if (user) {
       fetchHelpRequests();
@@ -135,12 +186,14 @@ export function useHelpRequests() {
         supabase.removeChannel(channel);
       };
     }
-  }, [user]);
+  }, [user, showAllLocations, userLocation]);
 
   return {
     helpRequests,
     loading,
+    showAllLocations,
     createHelpRequest,
+    toggleLocationFilter,
     refetch: fetchHelpRequests,
   };
 }

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Users, MessageCircle, Clock, Navigation, LogOut, Map as MapIcon } from 'lucide-react';
+import { MapPin, Users, MessageCircle, Clock, Navigation, LogOut, Map as MapIcon, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import Map from '@/components/Map';
 const Home = () => {
   const navigate = useNavigate();
   const { user, signOut, userLocation, nearbyUsersCount } = useAuth();
-  const { helpRequests, loading } = useHelpRequests();
+  const { helpRequests, loading, showAllLocations, toggleLocationFilter } = useHelpRequests();
   const [showMap, setShowMap] = useState(false);
 
   const getCategoryColor = (category: string) => {
@@ -94,6 +94,29 @@ const Home = () => {
           Ask for Help
         </Button>
 
+        {/* Location Filter Toggle */}
+        <Button 
+          onClick={toggleLocationFilter}
+          variant="outline"
+          className={`w-full h-12 transition-all duration-200 ${
+            showAllLocations 
+              ? 'border-orange-200 text-orange-600 hover:bg-orange-50' 
+              : 'border-green-200 text-green-600 hover:bg-green-50'
+          }`}
+        >
+          {showAllLocations ? (
+            <>
+              <Globe className="mr-2 h-5 w-5" />
+              Showing All Locations
+            </>
+          ) : (
+            <>
+              <MapPin className="mr-2 h-5 w-5" />
+              Showing Within 10km
+            </>
+          )}
+        </Button>
+
         {/* Live Users Map Toggle */}
         <Button 
           onClick={() => setShowMap(!showMap)}
@@ -114,7 +137,9 @@ const Home = () => {
         {/* Recent Help Requests */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {showAllLocations ? 'All Requests' : 'Nearby Requests'}
+            </h2>
             <Button 
               variant="ghost" 
               size="sm"
@@ -144,7 +169,11 @@ const Home = () => {
               {helpRequests.length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-center">
-                    <p className="text-gray-500">No help requests yet. Be the first to ask for help!</p>
+                    <p className="text-gray-500">
+                      {showAllLocations 
+                        ? 'No help requests yet. Be the first to ask for help!' 
+                        : 'No help requests nearby. Try expanding to all locations.'}
+                    </p>
                   </CardContent>
                 </Card>
               ) : (
@@ -181,7 +210,12 @@ const Home = () => {
                           </div>
                           <div className="flex items-center space-x-1">
                             <Navigation className="h-3 w-3" />
-                            <span>0.5 km away</span>
+                            <span>
+                              {request.distance_km 
+                                ? `${request.distance_km.toFixed(1)} km away`
+                                : 'Distance unknown'
+                              }
+                            </span>
                           </div>
                           <span>by {request.profiles?.full_name || request.profiles?.username || 'Anonymous'}</span>
                         </div>
