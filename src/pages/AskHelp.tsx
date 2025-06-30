@@ -9,11 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { useHelpRequests } from '@/hooks/useHelpRequests';
+import { useAuth } from '@/hooks/useAuth';
 import type { Database } from '@/integrations/supabase/types';
 
 const AskHelp = () => {
   const navigate = useNavigate();
   const { createHelpRequest } = useHelpRequests();
+  const { userLocation } = useAuth();
   const [category, setCategory] = useState<Database['public']['Enums']['help_category'] | ''>('');
   const [message, setMessage] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
@@ -37,6 +39,15 @@ const AskHelp = () => {
       return;
     }
 
+    if (!userLocation) {
+      toast({
+        title: "Location Required",
+        description: "Please allow location access to send help requests.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -44,7 +55,7 @@ const AskHelp = () => {
         category,
         message: message.trim(),
         is_urgent: isUrgent,
-        location_name: 'Noida Sector 135',
+        location_name: userLocation.name,
       });
 
       if (error) {
@@ -89,7 +100,7 @@ const AskHelp = () => {
               <h1 className="text-lg font-semibold text-gray-900">Ask for Help</h1>
               <p className="text-sm text-gray-500 flex items-center">
                 <MapPin className="h-3 w-3 mr-1" />
-                Noida Sector 135
+                {userLocation ? userLocation.name : 'Getting location...'}
               </p>
             </div>
           </div>
@@ -190,7 +201,7 @@ const AskHelp = () => {
               <Button 
                 type="submit" 
                 className="w-full h-12 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-                disabled={isSubmitting || !category || !message.trim()}
+                disabled={isSubmitting || !category || !message.trim() || !userLocation}
               >
                 {isSubmitting ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
