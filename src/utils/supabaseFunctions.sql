@@ -1,5 +1,5 @@
 
--- Function to get nearby users with their coordinates
+-- Function to get nearby users with their coordinates and online status
 CREATE OR REPLACE FUNCTION get_nearby_users(
   user_lat FLOAT,
   user_lng FLOAT,
@@ -12,7 +12,8 @@ RETURNS TABLE (
   location_name TEXT,
   lat FLOAT,
   lng FLOAT,
-  distance_km FLOAT
+  distance_km FLOAT,
+  is_online BOOLEAN
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -26,7 +27,11 @@ BEGIN
     ST_Distance(
       ul.location_point::geography,
       ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::geography
-    ) / 1000.0 as distance_km
+    ) / 1000.0 as distance_km,
+    CASE 
+      WHEN p.status = 'online' AND p.last_seen > NOW() - INTERVAL '2 minutes' THEN true
+      ELSE false
+    END as is_online
   FROM user_locations ul
   JOIN profiles p ON ul.user_id = p.id
   WHERE 
@@ -36,7 +41,8 @@ BEGIN
       ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::geography,
       radius_km * 1000
     )
-    AND ul.updated_at > NOW() - INTERVAL '5 minutes' -- Only show users active in last 5 minutes
+    AND ul.updated_at > NOW() - INTERVAL '10 minutes' -- Only show users active in last 10 minutes
+    AND ul.user_id != (SELECT auth.uid()) -- Exclude current user
   ORDER BY distance_km;
 END;
 $$ LANGUAGE plpgsql;

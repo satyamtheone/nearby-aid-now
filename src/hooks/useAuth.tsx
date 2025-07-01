@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -144,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Get nearby users count using the new function
+  // Get nearby users count using the updated function that includes online status
   const getNearbyUsersCount = async () => {
     if (!userLocation || !user || !session) return;
 
@@ -161,13 +160,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const nearbyUsers = (data as NearbyUser[]) || [];
-      setNearbyUsersCount(nearbyUsers.length);
+      // Count only online users
+      const onlineCount = nearbyUsers.filter(u => u.is_online).length;
+      setNearbyUsersCount(onlineCount);
+      console.log('Nearby online users count:', onlineCount);
     } catch (error) {
       console.error('Error getting nearby users:', error);
     }
   };
 
-  // Enhanced presence tracking
+  // Enhanced presence tracking with better online status management
   const trackUserPresence = async () => {
     if (!user || !userLocation || !session) return;
 
@@ -177,7 +179,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const onlineUsers = Object.keys(state).length;
-        console.log('Online users:', onlineUsers);
+        console.log('Total online users in presence:', onlineUsers);
+        getNearbyUsersCount(); // Refresh nearby count
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         console.log('User joined:', key, newPresences);
@@ -189,6 +192,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          // Update user status to online in profiles table
+          await supabase
+            .from('profiles')
+            .update({ 
+              status: 'online',
+              last_seen: new Date().toISOString()
+            })
+            .eq('id', user.id);
+
           await channel.track({
             user_id: user.id,
             online_at: new Date().toISOString(),
@@ -198,12 +210,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-    // Keep location updated every 30 seconds
-    const locationUpdateInterval = setInterval(() => {
+    // Keep location and online status updated every 15 seconds
+    const locationUpdateInterval = setInterval(async () => {
       if (userLocation && user && session) {
-        updateUserLocation(userLocation.lat, userLocation.lng, userLocation.name);
+        await updateUserLocation(userLocation.lat, userLocation.lng, userLocation.name);
+        // Update online status
+        await supabase
+          .from('profiles')
+          .update({ 
+            status: 'online',
+            last_seen: new Date().toISOString()
+          })
+          .eq('id', user.id);
       }
-    }, 30000);
+    }, 15000);
 
     return () => {
       channel.unsubscribe();
@@ -276,6 +296,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Update status to offline before signing out
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ 
+          status: 'offline',
+          last_seen: new Date().toISOString()
+        })
+        .eq('id', user.id);
+    }
+    
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Error signing out:', error);
   };

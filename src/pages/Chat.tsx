@@ -8,14 +8,55 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessages } from '@/hooks/useMessages';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Chat = () => {
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [onlineUsers] = useState(15);
-  const { user } = useAuth();
+  const [onlineUsersCount, setOnlineUsersCount] = useState(0);
+  const [userOnlineStatus, setUserOnlineStatus] = useState<{[key: string]: boolean}>({});
+  const { user, userLocation } = useAuth();
   const { messages, loading, sendMessage } = useMessages();
+
+  // Get online users count
+  const getOnlineUsersCount = async () => {
+    if (!userLocation) return;
+
+    try {
+      const { data, error } = await supabase.rpc('get_nearby_users' as any, {
+        user_lat: userLocation.lat,
+        user_lng: userLocation.lng,
+        radius_km: 2
+      });
+
+      if (error) {
+        console.error('Error getting online users:', error);
+        return;
+      }
+
+      const nearbyUsers = (data as any[]) || [];
+      const onlineCount = nearbyUsers.filter(u => u.is_online).length;
+      setOnlineUsersCount(onlineCount);
+
+      // Create status map
+      const statusMap: {[key: string]: boolean} = {};
+      nearbyUsers.forEach(u => {
+        statusMap[u.user_id] = u.is_online;
+      });
+      setUserOnlineStatus(statusMap);
+    } catch (error) {
+      console.error('Error getting online users:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (userLocation) {
+      getOnlineUsersCount();
+      const interval = setInterval(getOnlineUsersCount, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [userLocation]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,7 +80,7 @@ const Chat = () => {
         description: "Failed to send message. Please try again.",
         variant: "destructive"
       });
-      setNewMessage(messageText); // Restore the message
+      setNewMessage(messageText);
     }
   };
 
@@ -49,6 +90,10 @@ const Chat = () => {
       minute: '2-digit',
       hour12: true 
     });
+  };
+
+  const isUserOnline = (userId: string) => {
+    return userOnlineStatus[userId] || false;
   };
 
   return (
@@ -70,14 +115,14 @@ const Chat = () => {
                 <h1 className="text-lg font-semibold text-gray-900">Community Chat</h1>
                 <p className="text-sm text-gray-500 flex items-center">
                   <MapPin className="h-3 w-3 mr-1" />
-                  Noida Sector 135 • 2km radius
+                  {userLocation?.name || 'Getting location...'} • 2km radius
                 </p>
               </div>
             </div>
             <div className="text-right">
               <div className="flex items-center space-x-1 text-green-600">
                 <Users className="h-4 w-4" />
-                <span className="text-sm font-medium">{onlineUsers}</span>
+                <span className="text-sm font-medium">{onlineUsersCount}</span>
               </div>
               <p className="text-xs text-gray-500">online</p>
             </div>
@@ -100,7 +145,8 @@ const Chat = () => {
             ) : (
               messages.map((message) => {
                 const isOwnMessage = message.user_id === user?.id;
-                const userName = isOwnMessage ? 'You' : (message.profiles?.username || 'Anonymous');
+                const userName = isOwnMessage ? 'You' : (message.profiles?.full_name || message.profiles?.username || 'Anonymous');
+                const online = isOwnMessage ? true : isUserOnline(message.user_id);
                 
                 return (
                   <div
@@ -116,9 +162,15 @@ const Chat = () => {
                     >
                       {!isOwnMessage && (
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-blue-600">
-                            {userName}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-medium text-blue-600">
+                              {userName}
+                            </span>
+                            <div className={`w-2 h-2 rounded-full ${online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                            <span className={`text-xs ${online ? 'text-green-600' : 'text-gray-500'}`}>
+                              {online ? 'Online' : 'Offline'}
+                            </span>
+                          </div>
                           <Badge variant="outline" className="text-xs text-gray-500 border-gray-300">
                             {message.location_name || 'Unknown location'}
                           </Badge>
