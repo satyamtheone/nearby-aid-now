@@ -36,14 +36,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Get location name from coordinates using free geocoding service
   const getLocationName = async (lat: number, lng: number) => {
     try {
-      // Using free Nominatim OpenStreetMap geocoding service
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`
       );
       const data = await response.json();
       
       if (data && data.display_name) {
-        // Extract relevant parts for a clean location name
         const address = data.address || {};
         const parts = [];
         
@@ -71,48 +69,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Get user's live location
   const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          
-          console.log('Got user location:', latitude, longitude);
-          
-          // Show coordinates first, then update with name
-          setUserLocation({
-            lat: latitude,
-            lng: longitude,
-            name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-          });
-
-          // Get readable location name
-          const locationName = await getLocationName(latitude, longitude);
-          
-          setUserLocation({
-            lat: latitude,
-            lng: longitude,
-            name: locationName
-          });
-
-          // Update user location in database if user is logged in and session is established
-          if (user && session) {
-            await updateUserLocation(latitude, longitude, locationName);
+    return new Promise<{ lat: number; lng: number; name: string }>((resolve, reject) => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            console.log('Got user location:', latitude, longitude);
+            
+            const locationName = await getLocationName(latitude, longitude);
+            const location = {
+              lat: latitude,
+              lng: longitude,
+              name: locationName
+            };
+            
+            setUserLocation(location);
+            resolve(location);
+          },
+          (error) => {
+            console.error('Error getting location:', error);
+            const fallbackLocation = {
+              lat: 28.5355,
+              lng: 77.3910,
+              name: "Noida, Uttar Pradesh, India"
+            };
+            setUserLocation(fallbackLocation);
+            resolve(fallbackLocation);
           }
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          // Fallback to default location with proper name
-          setUserLocation({
-            lat: 28.5355,
-            lng: 77.3910,
-            name: "Noida, Uttar Pradesh, India"
-          });
-        }
-      );
-    }
+        );
+      } else {
+        const fallbackLocation = {
+          lat: 28.5355,
+          lng: 77.3910,
+          name: "Noida, Uttar Pradesh, India"
+        };
+        setUserLocation(fallbackLocation);
+        resolve(fallbackLocation);
+      }
+    });
   };
 
-  // Update user location in database with better error handling
+  // Update user location in database
   const updateUserLocation = async (lat: number, lng: number, locationName: string) => {
     if (!user || !session) {
       console.log('User or session not available, skipping location update');
@@ -122,7 +119,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Updating user location for user:', user.id);
       
-      const { error } = await supabase
+      // First update the profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          location_name: locationName,
+          location_point: `POINT(${lng} ${lat})`,
+          status: 'online',
+          last_seen: new Date().toISOString(),
+          full_name: user.user_metadata?.full_name || user.email || 'Anonymous'
+        });
+
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+      } else {
+        console.log('Profile updated successfully');
+      }
+
+      // Then update user_locations table
+      const { error: locationError } = await supabase
         .from('user_locations')
         .upsert({
           user_id: user.id,
@@ -132,27 +148,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updated_at: new Date().toISOString()
         });
 
-      if (error) {
-        console.error('Error updating location:', error);
-        // Don't throw error, just log it
+      if (locationError) {
+        console.error('Error updating location:', locationError);
       } else {
         console.log('Location updated successfully');
       }
     } catch (error) {
       console.error('Error updating location:', error);
-      // Don't throw error, just log it
     }
   };
 
-  // Get nearby users count using the updated function that includes online status
+  // Get nearby users count
   const getNearbyUsersCount = async () => {
-    if (!userLocation || !user || !session) return;
+    if (!userLocation || !user || !session) {
+      console.log('Missing requirements for nearby users count');
+      return;
+    }
 
     try {
+      console.log('Getting nearby users for location:', userLocation);
+      
       const { data, error } = await supabase.rpc('get_nearby_users' as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
-        radius_km: 2
+        radius_km: 10.0
       });
 
       if (error) {
@@ -161,85 +180,136 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const nearbyUsers = (data as NearbyUser[]) || [];
-      // Count only online users
+      console.log('All nearby users from DB:', nearbyUsers);
+      
       const onlineCount = nearbyUsers.filter(u => u.is_online).length;
+      console.log('Online users count:', onlineCount);
+      
       setNearbyUsersCount(onlineCount);
-      console.log('Nearby online users count:', onlineCount);
     } catch (error) {
       console.error('Error getting nearby users:', error);
     }
   };
 
-  // Enhanced presence tracking with better online status management
-  const trackUserPresence = async () => {
-    if (!user || !userLocation || !session) return;
+  // Set up presence tracking
+  const setupPresenceTracking = async (location: { lat: number; lng: number; name: string }) => {
+    if (!user || !session) return;
 
-    const channel = supabase.channel('user-presence');
-    
+    console.log('Setting up presence tracking for user:', user.id);
+
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: user.id,
+        },
+      },
+    });
+
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        const onlineUsers = Object.keys(state).length;
-        console.log('Total online users in presence:', onlineUsers);
-        getNearbyUsersCount(); // Refresh nearby count
+        console.log('Presence sync:', state);
+        // Refresh nearby users count when presence changes
+        setTimeout(getNearbyUsersCount, 1000);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('User joined:', key, newPresences);
-        getNearbyUsersCount();
+        console.log('User joined presence:', key, newPresences);
+        setTimeout(getNearbyUsersCount, 1000);
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('User left:', key, leftPresences);
-        getNearbyUsersCount();
+        console.log('User left presence:', key, leftPresences);
+        setTimeout(getNearbyUsersCount, 1000);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          // Update user status to online in profiles table
-          await supabase
-            .from('profiles')
-            .update({ 
-              status: 'online',
-              last_seen: new Date().toISOString()
-            })
-            .eq('id', user.id);
-
-          await channel.track({
+          console.log('Subscribed to presence channel');
+          
+          // Update user status to online in the database
+          await updateUserLocation(location.lat, location.lng, location.name);
+          
+          // Track presence
+          const presenceData = {
             user_id: user.id,
+            full_name: user.user_metadata?.full_name || user.email || 'Anonymous',
             online_at: new Date().toISOString(),
-            location: userLocation,
-            full_name: user.user_metadata?.full_name || user.email
-          });
+            location: location
+          };
+          
+          console.log('Tracking presence with data:', presenceData);
+          await channel.track(presenceData);
         }
       });
 
-    // Keep location and online status updated every 15 seconds
-    const locationUpdateInterval = setInterval(async () => {
-      if (userLocation && user && session) {
-        await updateUserLocation(userLocation.lat, userLocation.lng, userLocation.name);
-        // Update online status
-        await supabase
-          .from('profiles')
-          .update({ 
-            status: 'online',
-            last_seen: new Date().toISOString()
-          })
-          .eq('id', user.id);
+    // Keep updating location and status every 30 seconds
+    const updateInterval = setInterval(async () => {
+      if (user && session && location) {
+        console.log('Periodic location and status update');
+        await updateUserLocation(location.lat, location.lng, location.name);
+        await getNearbyUsersCount();
       }
-    }, 15000);
+    }, 30000);
 
     return () => {
+      console.log('Cleaning up presence tracking');
       channel.unsubscribe();
-      clearInterval(locationUpdateInterval);
+      clearInterval(updateInterval);
     };
   };
 
+  // Initialize user location and presence when user logs in
   useEffect(() => {
-    // Set up auth state listener
+    const initializeUserData = async () => {
+      if (user && session && !userLocation) {
+        console.log('Initializing user data for:', user.id);
+        
+        try {
+          // Get current location
+          const location = await getCurrentLocation();
+          console.log('Got location:', location);
+          
+          // Update location in database
+          await updateUserLocation(location.lat, location.lng, location.name);
+          
+          // Set up presence tracking
+          const cleanup = await setupPresenceTracking(location);
+          
+          // Get initial nearby users count
+          setTimeout(() => {
+            getNearbyUsersCount();
+          }, 2000);
+          
+          return cleanup;
+        } catch (error) {
+          console.error('Error initializing user data:', error);
+        }
+      }
+    };
+
+    initializeUserData();
+  }, [user, session]);
+
+  // Refresh nearby users count when location changes
+  useEffect(() => {
+    if (userLocation && user && session) {
+      const interval = setInterval(getNearbyUsersCount, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [userLocation, user, session]);
+
+  // Set up auth state listener
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Reset location when user changes
+        if (!session?.user) {
+          setUserLocation(null);
+          setNearbyUsersCount(0);
+        }
       }
     );
 
@@ -252,25 +322,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (user && session) {
-      getCurrentLocation();
-      // Add a small delay to ensure session is fully established
-      setTimeout(() => {
-        trackUserPresence();
-      }, 1000);
-    }
-  }, [user, session]);
-
-  useEffect(() => {
-    if (userLocation && user && session) {
-      getNearbyUsersCount();
-      // Update nearby users count every 30 seconds
-      const interval = setInterval(getNearbyUsersCount, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [userLocation, user, session]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -297,8 +348,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    // Update status to offline before signing out
     if (user) {
+      // Update status to offline before signing out
       await supabase
         .from('profiles')
         .update({ 
