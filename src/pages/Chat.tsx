@@ -19,11 +19,13 @@ const Chat = () => {
   const { user, userLocation } = useAuth();
   const { messages, loading, sendMessage } = useMessages();
 
-  // Get online users count
-  const getOnlineUsersCount = async () => {
+  // Get online users and their status
+  const getOnlineUsers = async () => {
     if (!userLocation) return;
 
     try {
+      console.log('Chat: Getting online users');
+      
       const { data, error } = await supabase.rpc('get_nearby_users' as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
@@ -31,29 +33,33 @@ const Chat = () => {
       });
 
       if (error) {
-        console.error('Error getting online users:', error);
+        console.error('Chat: Error getting online users:', error);
         return;
       }
 
       const nearbyUsers = (data as any[]) || [];
+      console.log('Chat: Nearby users:', nearbyUsers);
+      
       const onlineCount = nearbyUsers.filter(u => u.is_online).length;
       setOnlineUsersCount(onlineCount);
 
-      // Create status map
+      // Create status map for all users
       const statusMap: {[key: string]: boolean} = {};
       nearbyUsers.forEach(u => {
         statusMap[u.user_id] = u.is_online;
       });
       setUserOnlineStatus(statusMap);
+      
+      console.log('Chat: Online count:', onlineCount, 'Status map:', statusMap);
     } catch (error) {
-      console.error('Error getting online users:', error);
+      console.error('Chat: Error getting online users:', error);
     }
   };
 
   useEffect(() => {
     if (userLocation) {
-      getOnlineUsersCount();
-      const interval = setInterval(getOnlineUsersCount, 10000);
+      getOnlineUsers();
+      const interval = setInterval(getOnlineUsers, 10000);
       return () => clearInterval(interval);
     }
   }, [userLocation]);

@@ -1,7 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { MapPin, Users } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
@@ -29,17 +28,21 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyC0bUeOzUhunKJZ_jI5aJoCmwdTIa0dj70';
 
 const Map = () => {
   const { userLocation, user } = useAuth();
-  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [allNearbyUsers, setAllNearbyUsers] = useState<OnlineUser[]>([]);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Fetch nearby users with real coordinates from database
+  // Fetch nearby users from database
   const fetchNearbyUsers = async () => {
-    if (!userLocation || !user) return;
+    if (!userLocation || !user) {
+      console.log('Missing userLocation or user for map');
+      return;
+    }
 
     try {
+      console.log('Map: Fetching nearby users at:', userLocation);
+      
       const { data, error } = await supabase.rpc('get_nearby_users' as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
@@ -47,66 +50,24 @@ const Map = () => {
       });
 
       if (error) {
-        console.error('Error fetching nearby users:', error);
+        console.error('Map: Error fetching nearby users:', error);
         return;
       }
 
-      console.log('Fetched nearby users from database:', data);
       const users = (data as OnlineUser[]) || [];
+      console.log('Map: Fetched users:', users);
       
-      // Don't filter out current user here - let the SQL function handle it
       setAllNearbyUsers(users);
-      
-      // Filter online users for display
-      const onlineUsersList = users.filter(u => u.is_online);
-      setOnlineUsers(onlineUsersList);
-      
-      console.log('Online users:', onlineUsersList);
-      console.log('All nearby users:', users);
     } catch (error) {
-      console.error('Error fetching nearby users:', error);
+      console.error('Map: Error fetching nearby users:', error);
     }
   };
 
-  // Set up real-time presence tracking
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase.channel('online-users-map');
-    
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        console.log('Presence sync event');
-        fetchNearbyUsers();
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('User joined:', key, newPresences);
-        fetchNearbyUsers();
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('User left:', key, leftPresences);
-        fetchNearbyUsers();
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && userLocation) {
-          await channel.track({
-            user_id: user.id,
-            online_at: new Date().toISOString(),
-            location: userLocation,
-            full_name: user.user_metadata?.full_name || user.email
-          });
-        }
-      });
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [user, userLocation]);
-
+  // Fetch nearby users when component mounts and periodically
   useEffect(() => {
     if (userLocation && user) {
       fetchNearbyUsers();
-      const interval = setInterval(fetchNearbyUsers, 10000); // Update every 10 seconds
+      const interval = setInterval(fetchNearbyUsers, 10000);
       return () => clearInterval(interval);
     }
   }, [userLocation, user]);
@@ -133,6 +94,8 @@ const Map = () => {
   const initializeMap = () => {
     if (!mapContainer.current || !userLocation || !window.google) return;
 
+    console.log('Initializing map with users:', allNearbyUsers);
+
     // Initialize Google Map
     map.current = new window.google.maps.Map(mapContainer.current, {
       center: { lat: userLocation.lat, lng: userLocation.lng },
@@ -140,7 +103,7 @@ const Map = () => {
       mapTypeId: 'roadmap',
     });
 
-    // Add user's location marker
+    // Add user's location marker (blue)
     new window.google.maps.Marker({
       position: { lat: userLocation.lat, lng: userLocation.lng },
       map: map.current,
@@ -150,7 +113,7 @@ const Map = () => {
       }
     });
 
-    // Add all nearby users markers (both online and offline)
+    // Add all nearby users markers
     allNearbyUsers.forEach((nearbyUser) => {
       const marker = new window.google.maps.Marker({
         position: { lat: nearbyUser.lat, lng: nearbyUser.lng },
@@ -158,8 +121,8 @@ const Map = () => {
         title: nearbyUser.full_name,
         icon: {
           url: nearbyUser.is_online 
-            ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
-            : 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+            ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'  // Online = green
+            : 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'    // Offline = red
         }
       });
 
@@ -194,6 +157,8 @@ const Map = () => {
       </Card>
     );
   }
+
+  const onlineUsers = allNearbyUsers.filter(u => u.is_online);
 
   return (
     <Card>
