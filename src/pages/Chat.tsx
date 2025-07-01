@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Send, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -59,7 +58,7 @@ const Chat = () => {
   useEffect(() => {
     if (userLocation) {
       getOnlineUsers();
-      const interval = setInterval(getOnlineUsers, 10000);
+      const interval = setInterval(getOnlineUsers, 8000); // Every 8 seconds
       return () => clearInterval(interval);
     }
   }, [userLocation]);

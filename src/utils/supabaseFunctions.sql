@@ -29,7 +29,7 @@ BEGIN
       ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::geography
     ) / 1000.0 as distance_km,
     CASE 
-      WHEN p.status = 'online' AND p.last_seen > NOW() - INTERVAL '2 minutes' THEN true
+      WHEN p.status = 'online' AND p.last_seen > NOW() - INTERVAL '5 minutes' THEN true
       ELSE false
     END as is_online
   FROM profiles p

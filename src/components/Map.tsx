@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, Users } from 'lucide-react';
@@ -36,7 +35,7 @@ const Map = () => {
   // Fetch nearby users from database
   const fetchNearbyUsers = async () => {
     if (!userLocation || !user) {
-      console.log('Missing userLocation or user for map');
+      console.log('Map: Missing userLocation or user');
       return;
     }
 
@@ -56,6 +55,7 @@ const Map = () => {
 
       const users = (data as OnlineUser[]) || [];
       console.log('Map: Fetched users:', users);
+      console.log('Map: Online users:', users.filter(u => u.is_online));
       
       setAllNearbyUsers(users);
     } catch (error) {
@@ -67,7 +67,7 @@ const Map = () => {
   useEffect(() => {
     if (userLocation && user) {
       fetchNearbyUsers();
-      const interval = setInterval(fetchNearbyUsers, 10000);
+      const interval = setInterval(fetchNearbyUsers, 8000); // Every 8 seconds
       return () => clearInterval(interval);
     }
   }, [userLocation, user]);
@@ -94,7 +94,7 @@ const Map = () => {
   const initializeMap = () => {
     if (!mapContainer.current || !userLocation || !window.google) return;
 
-    console.log('Initializing map with users:', allNearbyUsers);
+    console.log('Map: Initializing map with users:', allNearbyUsers);
 
     // Initialize Google Map
     map.current = new window.google.maps.Map(mapContainer.current, {
@@ -115,10 +115,12 @@ const Map = () => {
 
     // Add all nearby users markers
     allNearbyUsers.forEach((nearbyUser) => {
+      console.log('Map: Adding marker for user:', nearbyUser.full_name, 'Online:', nearbyUser.is_online);
+      
       const marker = new window.google.maps.Marker({
         position: { lat: nearbyUser.lat, lng: nearbyUser.lng },
         map: map.current,
-        title: nearbyUser.full_name,
+        title: `${nearbyUser.full_name} - ${nearbyUser.is_online ? 'Online' : 'Offline'}`,
         icon: {
           url: nearbyUser.is_online 
             ? 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'  // Online = green
