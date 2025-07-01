@@ -21,6 +21,7 @@ interface NearbyUser {
   lat: number;
   lng: number;
   distance_km: number;
+  is_online: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
