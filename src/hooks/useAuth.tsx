@@ -32,9 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
+  const [locationInitialized, setLocationInitialized] = useState(false);
 
   // Get location name from coordinates
-  const getLocationName = async (lat: number, lng: number) => {
+  const getLocationName = async (lat: number, lng: number): Promise<string> => {
     try {
       console.log('Fetching location name for:', lat, lng);
       const response = await fetch(
@@ -76,8 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Get user's current location
-  const getCurrentLocation = () => {
-    return new Promise<{ lat: number; lng: number; name: string }>((resolve, reject) => {
+  const getCurrentLocation = (): Promise<{ lat: number; lng: number; name: string }> => {
+    return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         console.error('Geolocation is not supported by this browser');
         const fallbackLocation = {
@@ -89,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      console.log('Starting geolocation request...');
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
@@ -124,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 15000,
           maximumAge: 300000 // 5 minutes
         }
       );
@@ -238,6 +240,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (locationInitialized) {
+      console.log('Location already initialized, skipping');
+      return;
+    }
+
     console.log('Initializing user data for:', user.email);
     
     try {
@@ -248,12 +255,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Set location state immediately
       setUserLocation(location);
+      setLocationInitialized(true);
       
       // Update location in database and set status to online
       await updateUserLocationAndStatus(location.lat, location.lng, location.name, true);
       
     } catch (error) {
       console.error('Error initializing user data:', error);
+      // Set fallback location even if there's an error
+      const fallback = {
+        lat: 28.5355,
+        lng: 77.3910,
+        name: "Noida, Uttar Pradesh, India"
+      };
+      setUserLocation(fallback);
+      setLocationInitialized(true);
     }
   };
 
@@ -264,18 +280,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
+        
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
         
         if (!session?.user) {
           setUserLocation(null);
           setNearbyUsersCount(0);
-        } else if (event === 'SIGNED_IN') {
-          // User just signed in, initialize their data
-          setTimeout(() => {
-            initializeUserData();
-          }, 1000);
+          setLocationInitialized(false);
+          setLoading(false);
+        } else {
+          setLoading(false);
+          // Only initialize on sign in or initial session
+          if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && !locationInitialized)) {
+            setTimeout(() => {
+              initializeUserData();
+            }, 500);
+          }
         }
       }
     );
@@ -287,16 +308,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       
-      // If we have a session on load, initialize user data
-      if (session?.user) {
+      // If we have a session on load and location not initialized, initialize user data
+      if (session?.user && !locationInitialized) {
         setTimeout(() => {
           initializeUserData();
-        }, 1000);
+        }, 500);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [locationInitialized]);
 
   // Keep user online and fetch nearby users periodically
   useEffect(() => {
@@ -362,6 +383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', user.id);
     }
     
+    setLocationInitialized(false);
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Error signing out:', error);
   };
