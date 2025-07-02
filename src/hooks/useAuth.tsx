@@ -279,6 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         
+        // Always update session and user together
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -286,11 +287,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!session?.user) {
           setUserLocation(null);
           setNearbyUsersCount(0);
-        } else if (event === 'SIGNED_IN') {
-          // Initialize location when user signs in
-          setTimeout(() => {
-            initializeUserLocation();
-          }, 100);
         }
       }
     );
@@ -301,17 +297,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      
-      // If we have a session on load, initialize location
-      if (session?.user) {
-        setTimeout(() => {
-          initializeUserLocation();
-        }, 100);
-      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Initialize location when both user and session are available
+  useEffect(() => {
+    if (user && session && !userLocation) {
+      console.log('User and session available, initializing location');
+      initializeUserLocation();
+    }
+  }, [user, session]);
 
   // Keep user online and fetch nearby users periodically
   useEffect(() => {
