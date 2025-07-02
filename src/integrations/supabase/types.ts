@@ -714,6 +714,19 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_nearby_users: {
+        Args: { user_lat: number; user_lng: number; radius_km?: number }
+        Returns: {
+          user_id: string
+          full_name: string
+          username: string
+          location_name: string
+          lat: number
+          lng: number
+          distance_km: number
+          is_online: boolean
+        }[]
+      }
       get_nearby_users_count: {
         Args: { user_lat: number; user_lng: number; radius_km?: number }
         Returns: number

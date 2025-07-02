@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             const { latitude, longitude } = position.coords;
-            console.log('Got user location:', latitude, longitude);
+            console.log('Got location:', { lat: latitude, lng: longitude, name: await getLocationName(latitude, longitude) });
             
             const locationName = await getLocationName(latitude, longitude);
             const location = {
@@ -104,15 +104,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Set user online status
+  const setUserOnline = async () => {
+    if (!user || !userLocation) {
+      console.log('Cannot set user online: missing user or location');
+      return;
+    }
+
+    console.log('Setting user online:', user.id);
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          status: 'online',
+          last_seen: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error setting user online:', error);
+      } else {
+        console.log('User set to online successfully');
+      }
+    } catch (error) {
+      console.error('Error in setUserOnline:', error);
+    }
+  };
+
   // Update user location and status in database
-  const updateUserLocationAndStatus = async (lat: number, lng: number, locationName: string, setOnline: boolean = false) => {
+  const updateUserLocationAndStatus = async (lat: number, lng: number, locationName: string, forceOnline: boolean = false) => {
     if (!user || !session) {
       console.log('No user or session, skipping location update');
       return;
     }
 
     try {
-      console.log('Updating user profile:', user.id, 'setOnline:', setOnline);
+      console.log('Updating location and status for user:', user.id, 'at', lat, lng, 'forceOnline:', forceOnline);
       
       const updateData: any = {
         id: user.id,
@@ -123,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         last_seen: new Date().toISOString()
       };
 
-      if (setOnline) {
+      if (forceOnline) {
         updateData.status = 'online';
       }
 
@@ -136,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('Error updating profile:', error);
       } else {
-        console.log('Profile updated successfully, status:', updateData.status || 'unchanged');
+        console.log('Profile updated successfully with status:', updateData.status || 'unchanged');
       }
     } catch (error) {
       console.error('Error in updateUserLocationAndStatus:', error);
@@ -146,37 +174,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Get nearby users count
   const fetchNearbyUsers = async () => {
     if (!userLocation || !user || !session) {
-      console.log('Missing requirements for nearby users fetch');
+      console.log('Missing requirements for nearby users');
       return;
     }
 
     try {
-      console.log('🚀 Calling get_nearby_users function with:', {
-        user_lat: userLocation.lat,
-        user_lng: userLocation.lng,
-        radius_km: 10.0
-      });
+      console.log('Fetching nearby users at:', userLocation);
       
-      const { data, error } = await supabase.rpc('get_nearby_users', {
+      const { data, error } = await supabase.rpc('get_nearby_users' as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
         radius_km: 10.0
       });
 
       if (error) {
-        console.error('❌ Error calling get_nearby_users:', error);
+        console.error('Error getting nearby users:', error);
         return;
       }
 
       const nearbyUsers = (data as NearbyUser[]) || [];
-      console.log('✅ Nearby users response:', nearbyUsers);
+      console.log('Fetched nearby users:', nearbyUsers);
       
       const onlineCount = nearbyUsers.filter(u => u.is_online).length;
-      console.log('📊 Online users count:', onlineCount, 'out of', nearbyUsers.length, 'total');
+      console.log('Online users count:', onlineCount, 'out of', nearbyUsers.length, 'total');
       
       setNearbyUsersCount(onlineCount);
     } catch (error) {
-      console.error('❌ Error in fetchNearbyUsers:', error);
+      console.error('Error in fetchNearbyUsers:', error);
     }
   };
 
@@ -184,12 +208,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initializeUserData = async () => {
     if (!user || !session) return;
 
-    console.log('🎯 Initializing user data for:', user.email);
+    console.log('Initializing user data for:', user.email);
     
     try {
       // Get current location
       const location = await getCurrentLocation();
-      console.log('📍 Location obtained:', location);
+      console.log('Location obtained:', location);
       
       setUserLocation(location);
       
@@ -199,7 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Wait a moment then fetch nearby users
       setTimeout(() => {
         fetchNearbyUsers();
-      }, 3000);
+      }, 2000);
       
     } catch (error) {
       console.error('Error initializing user data:', error);
@@ -247,24 +271,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Keep updating status and fetching nearby users
+  // Keep user online and fetch nearby users periodically
   useEffect(() => {
     if (!user || !session || !userLocation) return;
 
-    console.log('🔄 Starting periodic updates for user:', user.email);
+    console.log('Starting periodic updates for user:', user.email);
 
     const updateInterval = setInterval(async () => {
-      console.log('⏰ Periodic update - updating status and fetching nearby users');
+      console.log('Periodic update - keeping user online and fetching nearby users');
       
-      // Update user status to online
-      await updateUserLocationAndStatus(userLocation.lat, userLocation.lng, userLocation.name, true);
+      // Keep user online
+      await setUserOnline();
       
       // Fetch nearby users
       await fetchNearbyUsers();
     }, 10000); // Every 10 seconds
 
     return () => {
-      console.log('🛑 Clearing periodic updates');
+      console.log('Clearing periodic updates');
       clearInterval(updateInterval);
     };
   }, [user, session, userLocation]);
@@ -295,7 +319,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     if (user && userLocation) {
-      console.log('🚪 Setting user offline before sign out');
+      console.log('Setting user offline before sign out');
       await updateUserLocationAndStatus(userLocation.lat, userLocation.lng, userLocation.name, false);
       
       // Also explicitly set status to offline
