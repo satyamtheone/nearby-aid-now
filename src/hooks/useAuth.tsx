@@ -36,15 +36,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Get location name from coordinates
   const getLocationName = async (lat: number, lng: number) => {
     try {
+      console.log('Fetching location name for:', lat, lng);
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`
       );
+      
+      if (!response.ok) {
+        console.error('Geocoding API error:', response.status);
+        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`; 
+      }
+      
       const data = await response.json();
+      console.log('Geocoding response:', data);
       
       if (data && data.display_name) {
         const address = data.address || {};
         const parts = [];
         
+        // Try to build a meaningful location name
         if (address.suburb || address.neighbourhood) {
           parts.push(address.suburb || address.neighbourhood);
         }
@@ -55,7 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           parts.push(address.state);
         }
         
-        return parts.length > 0 ? parts.join(', ') : data.display_name;
+        const locationName = parts.length > 0 ? parts.join(', ') : data.display_name;
+        console.log('Generated location name:', locationName);
+        return locationName;
       }
     } catch (error) {
       console.error('Error getting location name:', error);
@@ -66,13 +77,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Get user's current location
   const getCurrentLocation = () => {
-    return new Promise<{ lat: number; lng: number; name: string }>((resolve) => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            console.log('Got location:', { lat: latitude, lng: longitude, name: await getLocationName(latitude, longitude) });
-            
+    return new Promise<{ lat: number; lng: number; name: string }>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        console.error('Geolocation is not supported by this browser');
+        const fallbackLocation = {
+          lat: 28.5355,
+          lng: 77.3910,
+          name: "Noida, Uttar Pradesh, India"
+        };
+        resolve(fallbackLocation);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log('Raw location obtained:', { lat: latitude, lng: longitude });
+          
+          try {
             const locationName = await getLocationName(latitude, longitude);
             const location = {
               lat: latitude,
@@ -80,27 +102,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               name: locationName
             };
             
+            console.log('Final location object:', location);
             resolve(location);
-          },
-          (error) => {
-            console.error('Error getting location:', error);
-            // Fallback to a default location
-            const fallbackLocation = {
-              lat: 28.5355,
-              lng: 77.3910,
-              name: "Noida, Uttar Pradesh, India"
-            };
-            resolve(fallbackLocation);
+          } catch (error) {
+            console.error('Error processing location:', error);
+            resolve({
+              lat: latitude,
+              lng: longitude,
+              name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+            });
           }
-        );
-      } else {
-        const fallbackLocation = {
-          lat: 28.5355,
-          lng: 77.3910,
-          name: "Noida, Uttar Pradesh, India"
-        };
-        resolve(fallbackLocation);
-      }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          const fallbackLocation = {
+            lat: 28.5355,
+            lng: 77.3910,
+            name: "Noida, Uttar Pradesh, India"
+          };
+          resolve(fallbackLocation);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        }
+      );
     });
   };
 
@@ -140,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log('Updating location and status for user:', user.id, 'at', lat, lng, 'forceOnline:', forceOnline);
+      console.log('Updating location and status for user:', user.id, 'at', lat, lng, 'location:', locationName, 'forceOnline:', forceOnline);
       
       const updateData: any = {
         id: user.id,
@@ -164,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('Error updating profile:', error);
       } else {
-        console.log('Profile updated successfully with status:', updateData.status || 'unchanged');
+        console.log('Profile updated successfully with location:', locationName);
       }
     } catch (error) {
       console.error('Error in updateUserLocationAndStatus:', error);
@@ -174,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Get nearby users count
   const fetchNearbyUsers = async () => {
     if (!userLocation || !user || !session) {
-      console.log('Missing requirements for nearby users');
+      console.log('Missing requirements for nearby users - userLocation:', !!userLocation, 'user:', !!user, 'session:', !!session);
       return;
     }
 
@@ -206,24 +233,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize user data when user logs in
   const initializeUserData = async () => {
-    if (!user || !session) return;
+    if (!user || !session) {
+      console.log('Cannot initialize user data: missing user or session');
+      return;
+    }
 
     console.log('Initializing user data for:', user.email);
     
     try {
       // Get current location
+      console.log('Getting current location...');
       const location = await getCurrentLocation();
       console.log('Location obtained:', location);
       
+      // Set location state immediately
       setUserLocation(location);
       
       // Update location in database and set status to online
       await updateUserLocationAndStatus(location.lat, location.lng, location.name, true);
-      
-      // Wait a moment then fetch nearby users
-      setTimeout(() => {
-        fetchNearbyUsers();
-      }, 2000);
       
     } catch (error) {
       console.error('Error initializing user data:', error);
@@ -286,6 +313,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Fetch nearby users
       await fetchNearbyUsers();
     }, 10000); // Every 10 seconds
+
+    // Also fetch nearby users immediately when location is available
+    fetchNearbyUsers();
 
     return () => {
       console.log('Clearing periodic updates');
