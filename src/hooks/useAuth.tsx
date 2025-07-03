@@ -41,59 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
-  // Get location name from coordinates using a CORS-friendly approach
-  const getLocationName = async (lat: number, lng: number): Promise<string> => {
-    try {
-      console.log("Attempting to fetch location name for:", lat, lng);
-      
-      // Try with a CORS proxy or fall back to coordinates
-      const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`;
-      
-      // First try without proxy
-      try {
-        const response = await fetch(nominatimUrl, {
-          headers: {
-            'User-Agent': 'YourAppName/1.0'
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Geocoding successful:", data);
-          
-          if (data && data.display_name) {
-            const address = data.address || {};
-            const parts = [];
-
-            if (address.suburb || address.neighbourhood) {
-              parts.push(address.suburb || address.neighbourhood);
-            }
-            if (address.city || address.town || address.village) {
-              parts.push(address.city || address.town || address.village);
-            }
-            if (address.state) {
-              parts.push(address.state);
-            }
-
-            const locationName = parts.length > 0 ? parts.join(", ") : data.display_name;
-            console.log("Generated location name:", locationName);
-            return locationName;
-          }
-        }
-      } catch (directError) {
-        console.log("Direct API call failed, this is expected due to CORS:", directError);
-      }
-      
-      // If direct call fails, return formatted coordinates
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      
-    } catch (error) {
-      console.error("Error getting location name:", error);
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    }
-  };
-
   // Get user's current location
   const getCurrentLocation = (): Promise<{
     lat: number;
@@ -114,39 +61,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("Starting geolocation request...");
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
+        (position) => {
           const { latitude, longitude } = position.coords;
           console.log("Raw location obtained:", {
             lat: latitude,
             lng: longitude,
           });
 
-          // Set location with coordinates immediately
-          const basicLocation = {
+          // Just use coordinates as the name - no geocoding
+          const location = {
             lat: latitude,
             lng: longitude,
             name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
           };
 
-          // Update state immediately with coordinates
-          setUserLocation(basicLocation);
-          resolve(basicLocation);
-
-          // Try to get location name in background
-          try {
-            const locationName = await getLocationName(latitude, longitude);
-            const finalLocation = {
-              lat: latitude,
-              lng: longitude,
-              name: locationName,
-            };
-
-            console.log("Final location object:", finalLocation);
-            setUserLocation(finalLocation);
-          } catch (error) {
-            console.error("Error processing location name:", error);
-            // Keep the basic location if name fetching fails
-          }
+          console.log("Final location object:", location);
+          resolve(location);
         },
         (error) => {
           console.error("Geolocation error:", error);
@@ -307,6 +237,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Get current location
       const location = await getCurrentLocation();
       console.log("Location obtained:", location);
+
+      // Set location immediately
+      setUserLocation(location);
 
       // Update location in database and set status to online
       await updateUserLocationAndStatus(
