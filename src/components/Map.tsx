@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Users } from "lucide-react";
@@ -16,20 +17,10 @@ interface OnlineUser {
   is_online: boolean;
 }
 
-declare global {
-  interface Window {
-    google: any;
-    initMap: () => void;
-  }
-}
-
-const GOOGLE_MAPS_API_KEY = "AIzaSyC0bUeOzUhunKJZ_jI5aJoCmwdTIa0dj70";
-
 const Map = () => {
   const { userLocation, user } = useAuth();
   const [allNearbyUsers, setAllNearbyUsers] = useState<OnlineUser[]>([]);
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Fetch nearby users from database
@@ -55,10 +46,6 @@ const Map = () => {
 
       const users = (data as OnlineUser[]) || [];
       console.log("Map: Fetched users:", users);
-      console.log(
-        "Map: Online users:",
-        users.filter((u) => u.is_online)
-      );
 
       setAllNearbyUsers(users);
     } catch (error) {
@@ -75,98 +62,91 @@ const Map = () => {
     }
   }, [userLocation, user]);
 
-  const loadGoogleMapsScript = () => {
-    if (window.google) {
-      initializeMap();
-      return;
-    }
+  // Initialize simple map visualization
+  const initializeMap = () => {
+    if (!mapContainer.current || !userLocation) return;
 
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
-    script.async = true;
-    script.defer = true;
+    console.log("Map: Initializing simple map with users:", allNearbyUsers);
 
-    window.initMap = () => {
-      setIsLoaded(true);
-      initializeMap();
+    // Create a simple map visualization using Canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    canvas.style.width = '100%';
+    canvas.style.height = '300px';
+    canvas.style.border = '1px solid #ddd';
+    canvas.style.borderRadius = '8px';
+    canvas.style.background = '#f8f9fa';
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear previous content
+    mapContainer.current.innerHTML = '';
+    mapContainer.current.appendChild(canvas);
+
+    // Draw background
+    ctx.fillStyle = '#e8f4fd';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Calculate bounds
+    const allLats = [userLocation.lat, ...allNearbyUsers.map(u => u.lat)];
+    const allLngs = [userLocation.lng, ...allNearbyUsers.map(u => u.lng)];
+    
+    const minLat = Math.min(...allLats) - 0.01;
+    const maxLat = Math.max(...allLats) + 0.01;
+    const minLng = Math.min(...allLngs) - 0.01;
+    const maxLng = Math.max(...allLngs) + 0.01;
+
+    // Convert lat/lng to canvas coordinates
+    const latToY = (lat: number) => {
+      return ((maxLat - lat) / (maxLat - minLat)) * (canvas.height - 40) + 20;
+    };
+    
+    const lngToX = (lng: number) => {
+      return ((lng - minLng) / (maxLng - minLng)) * (canvas.width - 40) + 20;
     };
 
-    document.head.appendChild(script);
-  };
+    // Draw user's location (blue dot)
+    const userX = lngToX(userLocation.lng);
+    const userY = latToY(userLocation.lat);
+    
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.arc(userX, userY, 8, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Add user label
+    ctx.fillStyle = '#1f2937';
+    ctx.font = '12px Arial';
+    ctx.fillText('You', userX - 10, userY - 12);
 
-  const initializeMap = () => {
-    if (!mapContainer.current || !userLocation || !window.google) return;
-
-    console.log("Map: Initializing map with users:", allNearbyUsers);
-
-    // Initialize Google Map
-    map.current = new window.google.maps.Map(mapContainer.current, {
-      center: { lat: userLocation.lat, lng: userLocation.lng },
-      zoom: 12,
-      mapTypeId: "roadmap",
-    });
-
-    // Add user's location marker (blue)
-    new window.google.maps.Marker({
-      position: { lat: userLocation.lat, lng: userLocation.lng },
-      map: map.current,
-      title: "You are here",
-      icon: {
-        url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
-      },
-    });
-
-    // Add all nearby users markers
+    // Draw nearby users
     allNearbyUsers.forEach((nearbyUser) => {
-      console.log(
-        "Map: Adding marker for user:",
-        nearbyUser.full_name,
-        "Online:",
-        nearbyUser.is_online
-      );
-
-      const marker = new window.google.maps.Marker({
-        position: { lat: nearbyUser.lat, lng: nearbyUser.lng },
-        map: map.current,
-        title: `${nearbyUser.full_name} - ${
-          nearbyUser.is_online ? "Online" : "Offline"
-        }`,
-        icon: {
-          url: nearbyUser.is_online
-            ? "https://maps.google.com/mapfiles/ms/icons/green-dot.png" // Online = green
-            : "https://maps.google.com/mapfiles/ms/icons/red-dot.png", // Offline = red
-        },
-      });
-
-      // Add info window
-      const infoWindow = new window.google.maps.InfoWindow({
-        content: `<div><strong>${nearbyUser.full_name}</strong><br/>${
-          nearbyUser.location_name
-        }<br/><span style="color: ${
-          nearbyUser.is_online ? "green" : "red"
-        };">● ${
-          nearbyUser.is_online ? "Online" : "Offline"
-        }</span><br/><small>${nearbyUser.distance_km.toFixed(
-          1
-        )} km away</small></div>`,
-      });
-
-      marker.addListener("click", () => {
-        infoWindow.open(map.current, marker);
-      });
+      const x = lngToX(nearbyUser.lng);
+      const y = latToY(nearbyUser.lat);
+      
+      // Choose color based on online status
+      ctx.fillStyle = nearbyUser.is_online ? '#10b981' : '#ef4444';
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Add user name
+      ctx.fillStyle = '#1f2937';
+      ctx.font = '10px Arial';
+      const textWidth = ctx.measureText(nearbyUser.full_name).width;
+      ctx.fillText(nearbyUser.full_name, x - textWidth/2, y - 10);
     });
+
+    setIsLoaded(true);
   };
 
   useEffect(() => {
     if (userLocation) {
-      loadGoogleMapsScript();
+      initializeMap();
     }
-  }, [userLocation]);
-
-  useEffect(() => {
-    if (!userLocation || !isLoaded) return;
-    initializeMap();
-  }, [allNearbyUsers, userLocation, isLoaded]);
+  }, [allNearbyUsers, userLocation]);
 
   if (!userLocation) {
     return (
@@ -206,8 +186,10 @@ const Map = () => {
       <CardContent>
         <div
           ref={mapContainer}
-          className="w-full h-64 rounded-lg border mb-4"
-        />
+          className="w-full h-64 rounded-lg border mb-4 flex items-center justify-center"
+        >
+          {!isLoaded && <p className="text-gray-500">Loading map...</p>}
+        </div>
 
         <div className="space-y-3">
           <h4 className="font-medium text-sm">Users Nearby (10km radius):</h4>
@@ -260,11 +242,6 @@ const Map = () => {
                     </div>
                   </div>
                 ))}
-              {allNearbyUsers.length > 8 && (
-                <p className="text-xs text-gray-500 text-center">
-                  +{allNearbyUsers.length - 8} more users nearby
-                </p>
-              )}
             </div>
           )}
         </div>

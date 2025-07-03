@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { reverseGeocode } from "@/utils/geocoding";
 
 interface AuthContextType {
   user: User | null;
@@ -41,19 +42,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
-  // Get user's current location - ONLY coordinates, no geocoding
+  // Get user's current location with proper geocoding
   const getCurrentLocation = (): Promise<{
     lat: number;
     lng: number;
     name: string;
   }> => {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
       if (!navigator.geolocation) {
         console.error("Geolocation is not supported by this browser");
         const fallbackLocation = {
           lat: 28.5355,
           lng: 77.391,
-          name: "28.5355, 77.3910",
+          name: await reverseGeocode(28.5355, 77.391),
         };
         resolve(fallbackLocation);
         return;
@@ -61,29 +62,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("Starting geolocation request...");
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude } = position.coords;
           console.log("Raw location obtained:", {
             lat: latitude,
             lng: longitude,
           });
 
-          // Just use coordinates as the name - no geocoding
+          // Get location name using our safe geocoding function
+          const locationName = await reverseGeocode(latitude, longitude);
+
           const location = {
             lat: latitude,
             lng: longitude,
-            name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+            name: locationName,
           };
 
           console.log("Final location object:", location);
           resolve(location);
         },
-        (error) => {
+        async (error) => {
           console.error("Geolocation error:", error);
           const fallbackLocation = {
             lat: 28.5355,
             lng: 77.391,
-            name: "28.5355, 77.3910",
+            name: await reverseGeocode(28.5355, 77.391),
           };
           resolve(fallbackLocation);
         },
