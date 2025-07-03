@@ -41,6 +41,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
+  // Add debugging to catch any fetch calls
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      const url = args[0]?.toString() || '';
+      if (url.includes('nominatim.openstreetmap.org')) {
+        console.error('BLOCKED: Attempted call to OpenStreetMap API from:', new Error().stack);
+        return Promise.reject(new Error('OpenStreetMap API calls are blocked due to CORS'));
+      }
+      return originalFetch.apply(this, args as any);
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   // Get user's current location
   const getCurrentLocation = (): Promise<{
     lat: number;
