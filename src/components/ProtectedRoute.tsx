@@ -1,7 +1,6 @@
-
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,7 +12,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
   }, [user, loading, navigate]);
 
@@ -29,5 +28,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return null;
   }
 
-  return <>{children}</>;
+  return (
+    <div className="bg-gradient-to-br from-teal-400 via-purple-400 to-blue-500 animate-gradient-xy animate-gradient-xy bg-200">
+      {children}
+    </div>
+  );
 }

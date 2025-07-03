@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { createContext, useContext, useEffect, useState } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
@@ -9,7 +9,11 @@ interface AuthContextType {
   userLocation: { lat: number; lng: number; name: string } | null;
   nearbyUsersCount: number;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -30,29 +34,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; name: string } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+    name: string;
+  } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
   // Get location name from coordinates
   const getLocationName = async (lat: number, lng: number): Promise<string> => {
     try {
-      console.log('Fetching location name for:', lat, lng);
+      console.log("Fetching location name for:", lat, lng);
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`
       );
-      
+
       if (!response.ok) {
-        console.error('Geocoding API error:', response.status);
-        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`; 
+        console.error("Geocoding API error:", response.status);
+        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       }
-      
+
       const data = await response.json();
-      console.log('Geocoding response:', data);
-      
+      console.log("Geocoding response:", data);
+
       if (data && data.display_name) {
         const address = data.address || {};
         const parts = [];
-        
+
         // Try to build a meaningful location name
         if (address.suburb || address.neighbourhood) {
           parts.push(address.suburb || address.neighbourhood);
@@ -63,77 +71,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (address.state) {
           parts.push(address.state);
         }
-        
-        const locationName = parts.length > 0 ? parts.join(', ') : data.display_name;
-        console.log('Generated location name:', locationName);
+
+        const locationName =
+          parts.length > 0 ? parts.join(", ") : data.display_name;
+        console.log("Generated location name:", locationName);
         return locationName;
       }
     } catch (error) {
-      console.error('Error getting location name:', error);
+      console.error("Error getting location name:", error);
     }
-    
+
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
   // Get user's current location
-  const getCurrentLocation = (): Promise<{ lat: number; lng: number; name: string }> => {
+  const getCurrentLocation = (): Promise<{
+    lat: number;
+    lng: number;
+    name: string;
+  }> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        console.error('Geolocation is not supported by this browser');
+        console.error("Geolocation is not supported by this browser");
         const fallbackLocation = {
           lat: 28.5355,
-          lng: 77.3910,
-          name: "28.5355, 77.3910"
+          lng: 77.391,
+          name: "28.5355, 77.3910",
         };
         resolve(fallbackLocation);
         return;
       }
 
-      console.log('Starting geolocation request...');
+      console.log("Starting geolocation request...");
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          console.log('Raw location obtained:', { lat: latitude, lng: longitude });
-          
+          console.log("Raw location obtained:", {
+            lat: latitude,
+            lng: longitude,
+          });
+
           // Set location with coordinates immediately
           const basicLocation = {
             lat: latitude,
             lng: longitude,
-            name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+            name: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
           };
-          
+
           // Update state immediately with coordinates
           setUserLocation(basicLocation);
-          
+
           try {
             // Then try to get location name
             const locationName = await getLocationName(latitude, longitude);
             const finalLocation = {
               lat: latitude,
               lng: longitude,
-              name: locationName
+              name: locationName,
             };
-            
-            console.log('Final location object:', finalLocation);
+
+            console.log("Final location object:", finalLocation);
             resolve(finalLocation);
           } catch (error) {
-            console.error('Error processing location:', error);
+            console.error("Error processing location:", error);
             resolve(basicLocation);
           }
         },
         (error) => {
-          console.error('Geolocation error:', error);
+          console.error("Geolocation error:", error);
           const fallbackLocation = {
             lat: 28.5355,
-            lng: 77.3910,
-            name: "28.5355, 77.3910"
+            lng: 77.391,
+            name: "28.5355, 77.3910",
           };
           resolve(fallbackLocation);
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 60000 // 1 minute
+          maximumAge: 60000, // 1 minute
         }
       );
     });
@@ -142,130 +158,164 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Set user online status
   const setUserOnline = async () => {
     if (!user || !userLocation) {
-      console.log('Cannot set user online: missing user or location');
+      console.log("Cannot set user online: missing user or location");
       return;
     }
 
-    console.log('Setting user online:', user.id);
-    
+    console.log("Setting user online:", user.id);
+
     try {
       const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          status: 'online',
-          last_seen: new Date().toISOString()
+        .from("profiles")
+        .update({
+          status: "online",
+          last_seen: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq("id", user.id);
 
       if (error) {
-        console.error('Error setting user online:', error);
+        console.error("Error setting user online:", error);
       } else {
-        console.log('User set to online successfully');
+        console.log("User set to online successfully");
       }
     } catch (error) {
-      console.error('Error in setUserOnline:', error);
+      console.error("Error in setUserOnline:", error);
     }
   };
 
   // Update user location and status in database
-  const updateUserLocationAndStatus = async (lat: number, lng: number, locationName: string, forceOnline: boolean = false) => {
+  const updateUserLocationAndStatus = async (
+    lat: number,
+    lng: number,
+    locationName: string,
+    forceOnline: boolean = false
+  ) => {
     if (!user || !session) {
-      console.log('No user or session, skipping location update');
+      console.log("No user or session, skipping location update");
       return;
     }
 
     try {
-      console.log('Updating location and status for user:', user.id, 'at', lat, lng, 'location:', locationName, 'forceOnline:', forceOnline);
-      
+      console.log(
+        "Updating location and status for user:",
+        user.id,
+        "at",
+        lat,
+        lng,
+        "location:",
+        locationName,
+        "forceOnline:",
+        forceOnline
+      );
+
       const updateData: any = {
         id: user.id,
-        full_name: user.user_metadata?.full_name || user.email || 'Anonymous',
-        username: user.user_metadata?.username || user.email?.split('@')[0] || 'user',
+        full_name: user.user_metadata?.full_name || user.email || "Anonymous",
+        username:
+          user.user_metadata?.username || user.email?.split("@")[0] || "user",
         location_name: locationName,
         location_point: `POINT(${lng} ${lat})`,
-        last_seen: new Date().toISOString()
+        last_seen: new Date().toISOString(),
       };
 
       if (forceOnline) {
-        updateData.status = 'online';
+        updateData.status = "online";
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .upsert(updateData, {
-          onConflict: 'id'
-        });
+      const { error } = await supabase.from("profiles").upsert(updateData, {
+        onConflict: "id",
+      });
 
       if (error) {
-        console.error('Error updating profile:', error);
+        console.error("Error updating profile:", error);
       } else {
-        console.log('Profile updated successfully with location:', locationName);
+        console.log(
+          "Profile updated successfully with location:",
+          locationName
+        );
       }
     } catch (error) {
-      console.error('Error in updateUserLocationAndStatus:', error);
+      console.error("Error in updateUserLocationAndStatus:", error);
     }
   };
 
   // Get nearby users count
   const fetchNearbyUsers = async () => {
     if (!userLocation || !user || !session) {
-      console.log('Missing requirements for nearby users - userLocation:', !!userLocation, 'user:', !!user, 'session:', !!session);
+      console.log(
+        "Missing requirements for nearby users - userLocation:",
+        !!userLocation,
+        "user:",
+        !!user,
+        "session:",
+        !!session
+      );
       return;
     }
 
     try {
-      console.log('Fetching nearby users at:', userLocation);
-      
-      const { data, error } = await supabase.rpc('get_nearby_users' as any, {
+      console.log("Fetching nearby users at:", userLocation);
+
+      const { data, error } = await supabase.rpc("get_nearby_users" as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
-        radius_km: 10.0
+        radius_km: 10.0,
       });
 
       if (error) {
-        console.error('Error getting nearby users:', error);
+        console.error("Error getting nearby users:", error);
         return;
       }
 
       const nearbyUsers = (data as NearbyUser[]) || [];
-      console.log('Fetched nearby users:', nearbyUsers);
-      
-      const onlineCount = nearbyUsers.filter(u => u.is_online).length;
-      console.log('Online users count:', onlineCount, 'out of', nearbyUsers.length, 'total');
-      
+      console.log("Fetched nearby users:", nearbyUsers);
+
+      const onlineCount = nearbyUsers.filter((u) => u.is_online).length;
+      console.log(
+        "Online users count:",
+        onlineCount,
+        "out of",
+        nearbyUsers.length,
+        "total"
+      );
+
       setNearbyUsersCount(onlineCount);
     } catch (error) {
-      console.error('Error in fetchNearbyUsers:', error);
+      console.error("Error in fetchNearbyUsers:", error);
     }
   };
 
   // Initialize user location when user is authenticated
   const initializeUserLocation = async () => {
     if (!user || !session) {
-      console.log('Cannot initialize location: missing user or session');
+      console.log("Cannot initialize location: missing user or session");
       return;
     }
 
-    console.log('Initializing location for user:', user.email);
-    
+    console.log("Initializing location for user:", user.email);
+
     try {
       // Get current location
       const location = await getCurrentLocation();
-      console.log('Location obtained:', location);
-      
+      console.log("Location obtained:", location);
+
       // Update final location state
       setUserLocation(location);
-      
+
       // Update location in database and set status to online
-      await updateUserLocationAndStatus(location.lat, location.lng, location.name, true);
-      
+      await updateUserLocationAndStatus(
+        location.lat,
+        location.lng,
+        location.name,
+        true
+      );
     } catch (error) {
-      console.error('Error initializing location:', error);
+      console.error("Error initializing location:", error);
       // Set fallback location
       const fallback = {
         lat: 28.5355,
-        lng: 77.3910,
-        name: "28.5355, 77.3910"
+        lng: 77.391,
+        name: "28.5355, 77.3910",
       };
       setUserLocation(fallback);
     }
@@ -273,27 +323,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Set up auth state listener
   useEffect(() => {
-    console.log('Setting up auth listener');
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        
-        // Always update session and user together
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        if (!session?.user) {
-          setUserLocation(null);
-          setNearbyUsersCount(0);
-        }
+    console.log("Setting up auth listener");
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed:", event, session?.user?.email);
+
+      // Always update session and user together
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      if (!session?.user) {
+        setUserLocation(null);
+        setNearbyUsersCount(0);
       }
-    );
+    });
 
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session?.user?.email);
+      console.log("Initial session:", session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -305,7 +355,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize location when both user and session are available
   useEffect(() => {
     if (user && session && !userLocation) {
-      console.log('User and session available, initializing location');
+      console.log("User and session available, initializing location");
       initializeUserLocation();
     }
   }, [user, session]);
@@ -314,14 +364,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user || !session || !userLocation) return;
 
-    console.log('Starting periodic updates for user:', user.email);
+    console.log("Starting periodic updates for user:", user.email);
 
     const updateInterval = setInterval(async () => {
-      console.log('Periodic update - keeping user online and fetching nearby users');
-      
+      console.log(
+        "Periodic update - keeping user online and fetching nearby users"
+      );
+
       // Keep user online
       await setUserOnline();
-      
+
       // Fetch nearby users
       await fetchNearbyUsers();
     }, 10000); // Every 10 seconds
@@ -330,7 +382,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchNearbyUsers();
 
     return () => {
-      console.log('Clearing periodic updates');
+      console.log("Clearing periodic updates");
       clearInterval(updateInterval);
     };
   }, [user, session, userLocation]);
@@ -345,7 +397,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -353,42 +405,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
-        }
-      }
+        },
+      },
     });
     return { error };
   };
 
   const signOut = async () => {
     if (user && userLocation) {
-      console.log('Setting user offline before sign out');
-      await updateUserLocationAndStatus(userLocation.lat, userLocation.lng, userLocation.name, false);
-      
+      console.log("Setting user offline before sign out");
+      await updateUserLocationAndStatus(
+        userLocation.lat,
+        userLocation.lng,
+        userLocation.name,
+        false
+      );
+
       // Also explicitly set status to offline
       await supabase
-        .from('profiles')
-        .update({ 
-          status: 'offline',
-          last_seen: new Date().toISOString()
+        .from("profiles")
+        .update({
+          status: "offline",
+          last_seen: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq("id", user.id);
     }
-    
+
     const { error } = await supabase.auth.signOut();
-    if (error) console.error('Error signing out:', error);
+    if (error) console.error("Error signing out:", error);
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      userLocation,
-      nearbyUsersCount,
-      signIn,
-      signUp,
-      signOut,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        userLocation,
+        nearbyUsersCount,
+        signIn,
+        signUp,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -397,7 +456,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
