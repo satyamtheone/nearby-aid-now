@@ -238,11 +238,14 @@ const Home = () => {
                               <Clock className="h-3 w-3" />
                               <span>{formatTime(request.created_at)}</span>
                             </div>
-                            <div className="flex gap-0.5 ">
+                            <div className="flex gap-0.5 items-center ">
                               <Navigation className="h-3 w-3" />
-                              <span>
+                              {/* <span>
                                 {request.distance_km.toFixed(1)} km away
-                              </span>
+                              </span> */}
+                              {request.distance_km
+                                ? `${request.distance_km.toFixed(1)} km away`
+                                : "Distance unknown"}
                             </div>
                           </div>
                         </div>
