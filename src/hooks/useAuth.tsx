@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
-  // Get user's current location with proper geocoding
+  // Get user's current location with Google geocoding
   const getCurrentLocation = (): Promise<{
     lat: number;
     lng: number;
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             lng: longitude,
           });
 
-          // Get location name using our safe geocoding function
+          // Get location name using Google's geocoding API
           const locationName = await reverseGeocode(latitude, longitude);
 
           const location = {
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: locationName,
           };
 
-          console.log("Final location object:", location);
+          console.log("Final location with Google geocoding:", location);
           resolve(location);
         },
         async (error) => {
@@ -174,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Error updating profile:", error);
       } else {
         console.log(
-          "Profile updated successfully with location:",
+          "Profile updated successfully with Google geocoded location:",
           locationName
         );
       }
@@ -234,12 +235,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    console.log("Initializing location for user:", user.email);
+    console.log("Initializing location with Google geocoding for user:", user.email);
 
     try {
-      // Get current location (coordinates only)
+      // Get current location with Google geocoding
       const location = await getCurrentLocation();
-      console.log("Location obtained:", location);
+      console.log("Location obtained with Google geocoding:", location);
 
       // Set location immediately
       setUserLocation(location);

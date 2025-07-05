@@ -1,47 +1,58 @@
 
-// Simple geocoding utility that formats coordinates nicely
+// Google Maps Geocoding API utility
 export const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
   try {
-    // For now, we'll format the coordinates nicely
-    // In the future, this could be enhanced with a backend service
-    const latFormatted = lat.toFixed(4);
-    const lngFormatted = lng.toFixed(4);
+    // Get Google Maps API key from environment or you'll need to set it
+    const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'; // You'll need to replace this
     
-    // Try to determine rough location based on coordinates
-    const locationName = getLocationByCoordinates(lat, lng);
+    if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
+      console.warn('Google Maps API key not configured, using coordinate fallback');
+      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+    );
     
-    return locationName || `${latFormatted}, ${lngFormatted}`;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      // Get the most relevant address component
+      const result = data.results[0];
+      
+      // Try to get a nice formatted address
+      if (result.formatted_address) {
+        return result.formatted_address;
+      }
+      
+      // Fallback to address components
+      const components = result.address_components || [];
+      const locality = components.find(c => c.types.includes('locality'))?.long_name;
+      const admin = components.find(c => c.types.includes('administrative_area_level_1'))?.long_name;
+      const country = components.find(c => c.types.includes('country'))?.long_name;
+      
+      if (locality && admin && country) {
+        return `${locality}, ${admin}, ${country}`;
+      } else if (locality && country) {
+        return `${locality}, ${country}`;
+      } else if (admin && country) {
+        return `${admin}, ${country}`;
+      } else if (country) {
+        return country;
+      }
+    }
+    
+    // If no results, fallback to coordinates
+    console.log('No geocoding results found, using coordinates');
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    
   } catch (error) {
-    console.log('Geocoding fallback to coordinates');
+    console.error('Geocoding error:', error);
+    // Fallback to coordinates on any error
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   }
-};
-
-// Basic location detection based on coordinate ranges
-const getLocationByCoordinates = (lat: number, lng: number): string | null => {
-  // India coordinate ranges
-  if (lat >= 6.0 && lat <= 37.0 && lng >= 68.0 && lng <= 97.0) {
-    // Major Indian cities
-    if (lat >= 28.4 && lat <= 28.7 && lng >= 77.0 && lng <= 77.5) {
-      return "Delhi, India";
-    }
-    if (lat >= 19.0 && lat <= 19.3 && lng >= 72.7 && lng <= 73.0) {
-      return "Mumbai, India";
-    }
-    if (lat >= 12.8 && lat <= 13.1 && lng >= 77.4 && lng <= 77.8) {
-      return "Bangalore, India";
-    }
-    if (lat >= 22.4 && lat <= 22.7 && lng >= 88.2 && lng <= 88.5) {
-      return "Kolkata, India";
-    }
-    if (lat >= 17.3 && lat <= 17.5 && lng >= 78.3 && lng <= 78.6) {
-      return "Hyderabad, India";
-    }
-    if (lat >= 13.0 && lat <= 13.2 && lng >= 80.1 && lng <= 80.4) {
-      return "Chennai, India";
-    }
-    return "India";
-  }
-  
-  return null;
 };
