@@ -68,9 +68,23 @@ const Map = () => {
 
   // Initialize simple map visualization
   const initializeMap = () => {
-    if (!canvasRef.current || !userLocation) {
-      console.log("Map: Missing canvas or userLocation");
-      setMapError("Canvas or location not available");
+    console.log("Map: initializeMap called", {
+      hasCanvas: !!canvasRef.current,
+      hasUserLocation: !!userLocation,
+      userLocation: userLocation
+    });
+
+    if (!canvasRef.current) {
+      console.log("Map: Canvas ref not available");
+      setMapError("Canvas not ready");
+      setIsLoaded(false);
+      return;
+    }
+
+    if (!userLocation) {
+      console.log("Map: User location not available");
+      setMapError("Location not available");
+      setIsLoaded(false);
       return;
     }
 
@@ -82,6 +96,7 @@ const Map = () => {
       if (!ctx) {
         console.error("Map: Failed to get canvas context");
         setMapError("Failed to create map context");
+        setIsLoaded(false);
         return;
       }
 
@@ -103,6 +118,7 @@ const Map = () => {
       if (allLats.length === 0 || allLngs.length === 0) {
         console.log("Map: No valid coordinates to display");
         setMapError("No valid coordinates to display");
+        setIsLoaded(false);
         return;
       }
 
@@ -172,12 +188,17 @@ const Map = () => {
     }
   };
 
-  // Initialize map when we have location and users data
+  // Initialize map when we have location and canvas is ready
   useEffect(() => {
-    if (userLocation) {
-      console.log("Map: UserLocation available, initializing map");
-      initializeMap();
-    }
+    // Add a small delay to ensure canvas is mounted
+    const timeout = setTimeout(() => {
+      if (userLocation) {
+        console.log("Map: UserLocation available, initializing map");
+        initializeMap();
+      }
+    }, 100);
+
+    return () => clearTimeout(timeout);
   }, [allNearbyUsers, userLocation]);
 
   if (!userLocation) {
