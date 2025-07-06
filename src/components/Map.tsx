@@ -20,7 +20,7 @@ interface OnlineUser {
 const Map = () => {
   const { userLocation, user } = useAuth();
   const [allNearbyUsers, setAllNearbyUsers] = useState<OnlineUser[]>([]);
-  const mapContainer = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
 
@@ -68,42 +68,35 @@ const Map = () => {
 
   // Initialize simple map visualization
   const initializeMap = () => {
-    if (!mapContainer.current || !userLocation) {
-      console.log("Map: Missing container or userLocation");
+    if (!canvasRef.current || !userLocation) {
+      console.log("Map: Missing canvas or userLocation");
       return;
     }
 
     try {
       console.log("Map: Initializing simple map with users:", allNearbyUsers);
 
-      // Clear previous content
-      mapContainer.current.innerHTML = '';
-
-      // Create a simple map visualization using Canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = 400;
-      canvas.height = 300;
-      canvas.style.width = '100%';
-      canvas.style.height = '300px';
-      canvas.style.border = '1px solid #ddd';
-      canvas.style.borderRadius = '8px';
-      canvas.style.background = '#f8f9fa';
-      
+      const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         setMapError("Failed to create map context");
         return;
       }
 
-      mapContainer.current.appendChild(canvas);
+      // Set canvas size
+      canvas.width = 400;
+      canvas.height = 300;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Draw background
       ctx.fillStyle = '#e8f4fd';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Calculate bounds - ensure we have valid numbers
-      const allLats = [userLocation.lat, ...allNearbyUsers.map(u => u.lat)].filter(lat => !isNaN(lat));
-      const allLngs = [userLocation.lng, ...allNearbyUsers.map(u => u.lng)].filter(lng => !isNaN(lng));
+      const allLats = [userLocation.lat, ...allNearbyUsers.map(u => u.lat)].filter(lat => !isNaN(lat) && lat !== null && lat !== undefined);
+      const allLngs = [userLocation.lng, ...allNearbyUsers.map(u => u.lng)].filter(lng => !isNaN(lng) && lng !== null && lng !== undefined);
       
       if (allLats.length === 0 || allLngs.length === 0) {
         console.log("Map: No valid coordinates to display");
@@ -143,7 +136,9 @@ const Map = () => {
 
       // Draw nearby users
       allNearbyUsers.forEach((nearbyUser) => {
-        if (isNaN(nearbyUser.lat) || isNaN(nearbyUser.lng)) {
+        if (isNaN(nearbyUser.lat) || isNaN(nearbyUser.lng) || 
+            nearbyUser.lat === null || nearbyUser.lat === undefined ||
+            nearbyUser.lng === null || nearbyUser.lng === undefined) {
           console.log("Map: Skipping user with invalid coordinates:", nearbyUser);
           return;
         }
@@ -215,10 +210,7 @@ const Map = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div
-          ref={mapContainer}
-          className="w-full h-64 rounded-lg border mb-4 flex items-center justify-center"
-        >
+        <div className="w-full h-64 rounded-lg border mb-4 flex items-center justify-center">
           {mapError ? (
             <div className="text-center">
               <p className="text-red-500 text-sm mb-2">Map Error</p>
@@ -226,7 +218,13 @@ const Map = () => {
             </div>
           ) : !isLoaded ? (
             <p className="text-gray-500">Loading map...</p>
-          ) : null}
+          ) : (
+            <canvas
+              ref={canvasRef}
+              className="w-full h-full border rounded-lg bg-blue-50"
+              style={{ maxWidth: '400px', maxHeight: '300px' }}
+            />
+          )}
         </div>
 
         <div className="space-y-3">
