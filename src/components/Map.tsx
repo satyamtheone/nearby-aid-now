@@ -70,6 +70,7 @@ const Map = () => {
   const initializeMap = () => {
     if (!canvasRef.current || !userLocation) {
       console.log("Map: Missing canvas or userLocation");
+      setMapError("Canvas or location not available");
       return;
     }
 
@@ -79,6 +80,7 @@ const Map = () => {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (!ctx) {
+        console.error("Map: Failed to get canvas context");
         setMapError("Failed to create map context");
         return;
       }
@@ -162,14 +164,18 @@ const Map = () => {
 
       setIsLoaded(true);
       setMapError(null);
+      console.log("Map: Successfully initialized and set isLoaded to true");
     } catch (error) {
       console.error("Map: Error initializing map:", error);
       setMapError("Failed to initialize map");
+      setIsLoaded(false);
     }
   };
 
+  // Initialize map when we have location and users data
   useEffect(() => {
-    if (userLocation && !mapError) {
+    if (userLocation) {
+      console.log("Map: UserLocation available, initializing map");
       initializeMap();
     }
   }, [allNearbyUsers, userLocation]);
