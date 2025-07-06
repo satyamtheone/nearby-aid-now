@@ -76,16 +76,14 @@ const Map = () => {
 
     if (!canvasRef.current) {
       console.log("Map: Canvas ref not available");
-      setMapError("Canvas not ready");
-      setIsLoaded(false);
-      return;
+      return false;
     }
 
     if (!userLocation) {
       console.log("Map: User location not available");
       setMapError("Location not available");
       setIsLoaded(false);
-      return;
+      return false;
     }
 
     try {
@@ -97,7 +95,7 @@ const Map = () => {
         console.error("Map: Failed to get canvas context");
         setMapError("Failed to create map context");
         setIsLoaded(false);
-        return;
+        return false;
       }
 
       // Set canvas size
@@ -119,7 +117,7 @@ const Map = () => {
         console.log("Map: No valid coordinates to display");
         setMapError("No valid coordinates to display");
         setIsLoaded(false);
-        return;
+        return false;
       }
 
       const minLat = Math.min(...allLats) - 0.01;
@@ -181,22 +179,41 @@ const Map = () => {
       setIsLoaded(true);
       setMapError(null);
       console.log("Map: Successfully initialized and set isLoaded to true");
+      return true;
     } catch (error) {
       console.error("Map: Error initializing map:", error);
       setMapError("Failed to initialize map");
       setIsLoaded(false);
+      return false;
     }
   };
 
-  // Initialize map when we have location and canvas is ready
+  // Initialize map when canvas is mounted and we have data
   useEffect(() => {
-    // Add a small delay to ensure canvas is mounted
-    const timeout = setTimeout(() => {
-      if (userLocation) {
-        console.log("Map: UserLocation available, initializing map");
-        initializeMap();
+    if (!userLocation) return;
+
+    const checkAndInitialize = () => {
+      if (canvasRef.current) {
+        console.log("Map: Canvas is ready, initializing map");
+        const success = initializeMap();
+        if (!success) {
+          // If initialization failed, clear any error after a short delay and try again
+          setTimeout(() => {
+            setMapError(null);
+          }, 1000);
+        }
+      } else {
+        console.log("Map: Canvas not ready yet, will retry");
+        setMapError("Canvas not ready");
+        setIsLoaded(false);
       }
-    }, 100);
+    };
+
+    // Try immediately
+    checkAndInitialize();
+
+    // Also try after a short delay to ensure canvas is mounted
+    const timeout = setTimeout(checkAndInitialize, 200);
 
     return () => clearTimeout(timeout);
   }, [allNearbyUsers, userLocation]);
@@ -238,7 +255,7 @@ const Map = () => {
       </CardHeader>
       <CardContent>
         <div className="w-full h-64 rounded-lg border mb-4 flex items-center justify-center">
-          {mapError ? (
+          {mapError && !isLoaded ? (
             <div className="text-center">
               <p className="text-red-500 text-sm mb-2">Map Error</p>
               <p className="text-gray-500 text-xs">{mapError}</p>
