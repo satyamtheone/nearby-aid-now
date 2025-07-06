@@ -22,6 +22,7 @@ const Map = () => {
   const [allNearbyUsers, setAllNearbyUsers] = useState<OnlineUser[]>([]);
   const mapContainer = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   // Fetch nearby users from database
   const fetchNearbyUsers = async () => {
@@ -41,6 +42,7 @@ const Map = () => {
 
       if (error) {
         console.error("Map: Error fetching nearby users:", error);
+        setMapError("Failed to fetch nearby users");
         return;
       }
 
@@ -48,8 +50,10 @@ const Map = () => {
       console.log("Map: Fetched users:", users);
 
       setAllNearbyUsers(users);
+      setMapError(null);
     } catch (error) {
       console.error("Map: Error fetching nearby users:", error);
+      setMapError("Failed to fetch nearby users");
     }
   };
 
@@ -64,86 +68,113 @@ const Map = () => {
 
   // Initialize simple map visualization
   const initializeMap = () => {
-    if (!mapContainer.current || !userLocation) return;
+    if (!mapContainer.current || !userLocation) {
+      console.log("Map: Missing container or userLocation");
+      return;
+    }
 
-    console.log("Map: Initializing simple map with users:", allNearbyUsers);
+    try {
+      console.log("Map: Initializing simple map with users:", allNearbyUsers);
 
-    // Create a simple map visualization using Canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 300;
-    canvas.style.width = '100%';
-    canvas.style.height = '300px';
-    canvas.style.border = '1px solid #ddd';
-    canvas.style.borderRadius = '8px';
-    canvas.style.background = '#f8f9fa';
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+      // Clear previous content
+      mapContainer.current.innerHTML = '';
 
-    // Clear previous content
-    mapContainer.current.innerHTML = '';
-    mapContainer.current.appendChild(canvas);
-
-    // Draw background
-    ctx.fillStyle = '#e8f4fd';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Calculate bounds
-    const allLats = [userLocation.lat, ...allNearbyUsers.map(u => u.lat)];
-    const allLngs = [userLocation.lng, ...allNearbyUsers.map(u => u.lng)];
-    
-    const minLat = Math.min(...allLats) - 0.01;
-    const maxLat = Math.max(...allLats) + 0.01;
-    const minLng = Math.min(...allLngs) - 0.01;
-    const maxLng = Math.max(...allLngs) + 0.01;
-
-    // Convert lat/lng to canvas coordinates
-    const latToY = (lat: number) => {
-      return ((maxLat - lat) / (maxLat - minLat)) * (canvas.height - 40) + 20;
-    };
-    
-    const lngToX = (lng: number) => {
-      return ((lng - minLng) / (maxLng - minLng)) * (canvas.width - 40) + 20;
-    };
-
-    // Draw user's location (blue dot)
-    const userX = lngToX(userLocation.lng);
-    const userY = latToY(userLocation.lat);
-    
-    ctx.fillStyle = '#2563eb';
-    ctx.beginPath();
-    ctx.arc(userX, userY, 8, 0, 2 * Math.PI);
-    ctx.fill();
-    
-    // Add user label
-    ctx.fillStyle = '#1f2937';
-    ctx.font = '12px Arial';
-    ctx.fillText('You', userX - 10, userY - 12);
-
-    // Draw nearby users
-    allNearbyUsers.forEach((nearbyUser) => {
-      const x = lngToX(nearbyUser.lng);
-      const y = latToY(nearbyUser.lat);
+      // Create a simple map visualization using Canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 300;
+      canvas.style.width = '100%';
+      canvas.style.height = '300px';
+      canvas.style.border = '1px solid #ddd';
+      canvas.style.borderRadius = '8px';
+      canvas.style.background = '#f8f9fa';
       
-      // Choose color based on online status
-      ctx.fillStyle = nearbyUser.is_online ? '#10b981' : '#ef4444';
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        setMapError("Failed to create map context");
+        return;
+      }
+
+      mapContainer.current.appendChild(canvas);
+
+      // Draw background
+      ctx.fillStyle = '#e8f4fd';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Calculate bounds - ensure we have valid numbers
+      const allLats = [userLocation.lat, ...allNearbyUsers.map(u => u.lat)].filter(lat => !isNaN(lat));
+      const allLngs = [userLocation.lng, ...allNearbyUsers.map(u => u.lng)].filter(lng => !isNaN(lng));
+      
+      if (allLats.length === 0 || allLngs.length === 0) {
+        console.log("Map: No valid coordinates to display");
+        setMapError("No valid coordinates to display");
+        return;
+      }
+
+      const minLat = Math.min(...allLats) - 0.01;
+      const maxLat = Math.max(...allLats) + 0.01;
+      const minLng = Math.min(...allLngs) - 0.01;
+      const maxLng = Math.max(...allLngs) + 0.01;
+
+      // Convert lat/lng to canvas coordinates
+      const latToY = (lat: number) => {
+        if (isNaN(lat) || maxLat === minLat) return canvas.height / 2;
+        return ((maxLat - lat) / (maxLat - minLat)) * (canvas.height - 40) + 20;
+      };
+      
+      const lngToX = (lng: number) => {
+        if (isNaN(lng) || maxLng === minLng) return canvas.width / 2;
+        return ((lng - minLng) / (maxLng - minLng)) * (canvas.width - 40) + 20;
+      };
+
+      // Draw user's location (blue dot)
+      const userX = lngToX(userLocation.lng);
+      const userY = latToY(userLocation.lat);
+      
+      ctx.fillStyle = '#2563eb';
       ctx.beginPath();
-      ctx.arc(x, y, 6, 0, 2 * Math.PI);
+      ctx.arc(userX, userY, 8, 0, 2 * Math.PI);
       ctx.fill();
       
-      // Add user name
+      // Add user label
       ctx.fillStyle = '#1f2937';
-      ctx.font = '10px Arial';
-      const textWidth = ctx.measureText(nearbyUser.full_name).width;
-      ctx.fillText(nearbyUser.full_name, x - textWidth/2, y - 10);
-    });
+      ctx.font = '12px Arial';
+      ctx.fillText('You', userX - 10, userY - 12);
 
-    setIsLoaded(true);
+      // Draw nearby users
+      allNearbyUsers.forEach((nearbyUser) => {
+        if (isNaN(nearbyUser.lat) || isNaN(nearbyUser.lng)) {
+          console.log("Map: Skipping user with invalid coordinates:", nearbyUser);
+          return;
+        }
+
+        const x = lngToX(nearbyUser.lng);
+        const y = latToY(nearbyUser.lat);
+        
+        // Choose color based on online status
+        ctx.fillStyle = nearbyUser.is_online ? '#10b981' : '#ef4444';
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Add user name
+        ctx.fillStyle = '#1f2937';
+        ctx.font = '10px Arial';
+        const userName = nearbyUser.full_name || 'Unknown';
+        const textWidth = ctx.measureText(userName).width;
+        ctx.fillText(userName, x - textWidth/2, y - 10);
+      });
+
+      setIsLoaded(true);
+      setMapError(null);
+    } catch (error) {
+      console.error("Map: Error initializing map:", error);
+      setMapError("Failed to initialize map");
+    }
   };
 
   useEffect(() => {
-    if (userLocation) {
+    if (userLocation && !mapError) {
       initializeMap();
     }
   }, [allNearbyUsers, userLocation]);
@@ -188,7 +219,14 @@ const Map = () => {
           ref={mapContainer}
           className="w-full h-64 rounded-lg border mb-4 flex items-center justify-center"
         >
-          {!isLoaded && <p className="text-gray-500">Loading map...</p>}
+          {mapError ? (
+            <div className="text-center">
+              <p className="text-red-500 text-sm mb-2">Map Error</p>
+              <p className="text-gray-500 text-xs">{mapError}</p>
+            </div>
+          ) : !isLoaded ? (
+            <p className="text-gray-500">Loading map...</p>
+          ) : null}
         </div>
 
         <div className="space-y-3">
@@ -196,7 +234,7 @@ const Map = () => {
           {allNearbyUsers.length === 0 ? (
             <p className="text-sm text-gray-500">No other users nearby</p>
           ) : (
-            <div className="space-y-2 max-h-56 overflow-scroll">
+            <div className="space-y-2 max-h-56 overflow-y-auto">
               {allNearbyUsers
                 .sort((a, b) =>
                   b.is_online === a.is_online ? 0 : b.is_online ? 1 : -1
@@ -209,7 +247,7 @@ const Map = () => {
                     <div className="relative">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-xs">
-                          {nearbyUser.full_name.charAt(0).toUpperCase()}
+                          {(nearbyUser.full_name || 'U').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div
@@ -220,13 +258,13 @@ const Map = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {nearbyUser.full_name}
+                        {nearbyUser.full_name || 'Unknown User'}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        at {nearbyUser.location_name}
+                        at {nearbyUser.location_name || 'Unknown location'}
                       </p>
                       <p className="text-xs text-gray-400">
-                        {nearbyUser.distance_km.toFixed(1)} km away
+                        {isNaN(nearbyUser.distance_km) ? 'Distance unknown' : `${nearbyUser.distance_km.toFixed(1)} km away`}
                       </p>
                     </div>
                     <div className="flex items-center">
