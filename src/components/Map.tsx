@@ -254,20 +254,23 @@ const Map = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="w-full h-64 rounded-lg border mb-4 flex items-center justify-center">
-          {mapError && !isLoaded ? (
-            <div className="text-center">
-              <p className="text-red-500 text-sm mb-2">Map Error</p>
-              <p className="text-gray-500 text-xs">{mapError}</p>
+        <div className="w-full h-64 rounded-lg border mb-4 relative">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full border rounded-lg bg-blue-50"
+            style={{ maxWidth: '400px', maxHeight: '300px' }}
+          />
+          {!isLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white rounded-lg">
+              {mapError ? (
+                <div className="text-center">
+                  <p className="text-red-500 text-sm mb-2">Map Error</p>
+                  <p className="text-gray-500 text-xs">{mapError}</p>
+                </div>
+              ) : (
+                <p className="text-gray-500">Loading map...</p>
+              )}
             </div>
-          ) : !isLoaded ? (
-            <p className="text-gray-500">Loading map...</p>
-          ) : (
-            <canvas
-              ref={canvasRef}
-              className="w-full h-full border rounded-lg bg-blue-50"
-              style={{ maxWidth: '400px', maxHeight: '300px' }}
-            />
           )}
         </div>
 
