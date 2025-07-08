@@ -98,16 +98,33 @@ const Map = () => {
         return false;
       }
 
-      // Set canvas size
-      canvas.width = 400;
-      canvas.height = 300;
+      // Set canvas size to match the display size
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
 
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw background
-      ctx.fillStyle = '#e8f4fd';
+      // Draw background with grid pattern
+      ctx.fillStyle = '#f0f8ff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Add a subtle grid pattern
+      ctx.strokeStyle = '#e0e8f0';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= canvas.width; x += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += 20) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
 
       // Calculate bounds - ensure we have valid numbers
       const allLats = [userLocation.lat, ...allNearbyUsers.map(u => u.lat)].filter(lat => !isNaN(lat) && lat !== null && lat !== undefined);
