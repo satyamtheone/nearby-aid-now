@@ -108,9 +108,13 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
           avatar_url: string | null
           created_at: string | null
+          current_address: string | null
           full_name: string | null
+          gender: string | null
+          home_address: string | null
           id: string
           last_seen: string | null
           location_name: string | null
@@ -121,9 +125,13 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          age?: number | null
           avatar_url?: string | null
           created_at?: string | null
+          current_address?: string | null
           full_name?: string | null
+          gender?: string | null
+          home_address?: string | null
           id: string
           last_seen?: string | null
           location_name?: string | null
@@ -134,9 +142,13 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          age?: number | null
           avatar_url?: string | null
           created_at?: string | null
+          current_address?: string | null
           full_name?: string | null
+          gender?: string | null
+          home_address?: string | null
           id?: string
           last_seen?: string | null
           location_name?: string | null
@@ -703,6 +715,14 @@ export type Database = {
       geomfromewkt: {
         Args: { "": string }
         Returns: unknown
+      }
+      get_help_request_user_distance: {
+        Args: {
+          request_user_id: string
+          current_user_lat: number
+          current_user_lng: number
+        }
+        Returns: number
       }
       get_nearby_help_requests: {
         Args: { user_lat: number; user_lng: number; radius_km?: number }

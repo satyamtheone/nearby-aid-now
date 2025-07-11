@@ -10,6 +10,7 @@ import Home from "./pages/Home";
 import AskHelp from "./pages/AskHelp";
 import Chat from "./pages/Chat";
 import RequestChat from "./pages/RequestChat";
+import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -42,6 +43,11 @@ const App = () => (
             <Route path="/chat/:requestId" element={
               <ProtectedRoute>
                 <RequestChat />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
