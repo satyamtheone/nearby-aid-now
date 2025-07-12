@@ -5,6 +5,7 @@ import { MapPin, Users } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import UserProfileModal from "@/components/UserProfileModal";
 
 interface OnlineUser {
   user_id: string;
@@ -15,6 +16,7 @@ interface OnlineUser {
   lng: number;
   distance_km: number;
   is_online: boolean;
+  avatar_emoji: string;
 }
 
 const Map = () => {
@@ -302,45 +304,56 @@ const Map = () => {
                   b.is_online === a.is_online ? 0 : b.is_online ? 1 : -1
                 )
                 .map((nearbyUser) => (
-                  <div
+                  <UserProfileModal
                     key={nearbyUser.user_id}
-                    className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg"
+                    userId={nearbyUser.user_id}
+                    userName={nearbyUser.full_name || nearbyUser.username || 'Unknown User'}
+                    isOnline={nearbyUser.is_online}
+                    distance={nearbyUser.distance_km}
                   >
-                    <div className="relative">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs">
-                          {(nearbyUser.full_name || 'U').charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div
-                        className={`absolute -top-1 -right-1 w-3 h-3 ${
-                          nearbyUser.is_online ? "bg-green-500" : "bg-gray-400"
-                        } border-2 border-white rounded-full`}
-                      ></div>
+                    <div className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                      <div className="relative">
+                        {nearbyUser.avatar_emoji ? (
+                          <div className="h-8 w-8 flex items-center justify-center text-lg bg-white rounded-full border">
+                            {nearbyUser.avatar_emoji}
+                          </div>
+                        ) : (
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-xs">
+                              {(nearbyUser.full_name || 'U').charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div
+                          className={`absolute -top-1 -right-1 w-3 h-3 ${
+                            nearbyUser.is_online ? "bg-green-500" : "bg-gray-400"
+                          } border-2 border-white rounded-full`}
+                        ></div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {nearbyUser.full_name || 'Unknown User'}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          at {nearbyUser.location_name || 'Unknown location'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {isNaN(nearbyUser.distance_km) ? 'Distance unknown' : `${nearbyUser.distance_km.toFixed(1)} km away`}
+                        </p>
+                      </div>
+                      <div className="flex items-center">
+                        <span
+                          className={`text-xs font-medium ${
+                            nearbyUser.is_online
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {nearbyUser.is_online ? "Online" : "Offline"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {nearbyUser.full_name || 'Unknown User'}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        at {nearbyUser.location_name || 'Unknown location'}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {isNaN(nearbyUser.distance_km) ? 'Distance unknown' : `${nearbyUser.distance_km.toFixed(1)} km away`}
-                      </p>
-                    </div>
-                    <div className="flex items-center">
-                      <span
-                        className={`text-xs font-medium ${
-                          nearbyUser.is_online
-                            ? "text-green-600"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {nearbyUser.is_online ? "Online" : "Offline"}
-                      </span>
-                    </div>
-                  </div>
+                  </UserProfileModal>
                 ))}
             </div>
           )}

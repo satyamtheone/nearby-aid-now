@@ -109,6 +109,7 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          avatar_emoji: string | null
           avatar_url: string | null
           created_at: string | null
           current_address: string | null
@@ -120,12 +121,14 @@ export type Database = {
           location_name: string | null
           location_point: unknown | null
           phone: string | null
+          social_links: Json | null
           status: Database["public"]["Enums"]["user_status"] | null
           updated_at: string | null
           username: string | null
         }
         Insert: {
           age?: number | null
+          avatar_emoji?: string | null
           avatar_url?: string | null
           created_at?: string | null
           current_address?: string | null
@@ -137,12 +140,14 @@ export type Database = {
           location_name?: string | null
           location_point?: unknown | null
           phone?: string | null
+          social_links?: Json | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           age?: number | null
+          avatar_emoji?: string | null
           avatar_url?: string | null
           created_at?: string | null
           current_address?: string | null
@@ -154,6 +159,7 @@ export type Database = {
           location_name?: string | null
           location_point?: unknown | null
           phone?: string | null
+          social_links?: Json | null
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           username?: string | null
@@ -750,6 +756,7 @@ export type Database = {
           lng: number
           distance_km: number
           is_online: boolean
+          avatar_emoji: string
         }[]
       }
       get_nearby_users_count: {
