@@ -112,7 +112,7 @@ const Home = () => {
 
       <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto sm:px-4 px-1 py-6 space-y-6">
         {/* Ask for Help Button */}
-        <div className=" fixed  sm:bottom-10 bottom-24 right-3 z-50 rounded-xl shadow-md shadow-black/20 ">
+        <div className=" fixed  bottom-10 right-3 z-50 rounded-xl shadow-md shadow-black/20 ">
           <Button
             onClick={() => navigate("/ask-help")}
             className="rounded-xl  bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
