@@ -199,7 +199,7 @@ const Home = () => {
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 mb-32">
               {helpRequests.length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-center">
