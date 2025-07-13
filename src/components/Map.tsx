@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Users } from "lucide-react";
@@ -73,7 +72,7 @@ const Map = () => {
     console.log("Map: initializeMap called", {
       hasCanvas: !!canvasRef.current,
       hasUserLocation: !!userLocation,
-      userLocation: userLocation
+      userLocation: userLocation,
     });
 
     if (!canvasRef.current) {
@@ -92,7 +91,7 @@ const Map = () => {
       console.log("Map: Initializing simple map with users:", allNearbyUsers);
 
       const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (!ctx) {
         console.error("Map: Failed to get canvas context");
         setMapError("Failed to create map context");
@@ -109,11 +108,11 @@ const Map = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Draw background with grid pattern
-      ctx.fillStyle = '#f0f8ff';
+      ctx.fillStyle = "#f0f8ff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       // Add a subtle grid pattern
-      ctx.strokeStyle = '#e0e8f0';
+      ctx.strokeStyle = "#e0e8f0";
       ctx.lineWidth = 1;
       for (let x = 0; x <= canvas.width; x += 20) {
         ctx.beginPath();
@@ -129,9 +128,15 @@ const Map = () => {
       }
 
       // Calculate bounds - ensure we have valid numbers
-      const allLats = [userLocation.lat, ...allNearbyUsers.map(u => u.lat)].filter(lat => !isNaN(lat) && lat !== null && lat !== undefined);
-      const allLngs = [userLocation.lng, ...allNearbyUsers.map(u => u.lng)].filter(lng => !isNaN(lng) && lng !== null && lng !== undefined);
-      
+      const allLats = [
+        userLocation.lat,
+        ...allNearbyUsers.map((u) => u.lat),
+      ].filter((lat) => !isNaN(lat) && lat !== null && lat !== undefined);
+      const allLngs = [
+        userLocation.lng,
+        ...allNearbyUsers.map((u) => u.lng),
+      ].filter((lng) => !isNaN(lng) && lng !== null && lng !== undefined);
+
       if (allLats.length === 0 || allLngs.length === 0) {
         console.log("Map: No valid coordinates to display");
         setMapError("No valid coordinates to display");
@@ -149,7 +154,7 @@ const Map = () => {
         if (isNaN(lat) || maxLat === minLat) return canvas.height / 2;
         return ((maxLat - lat) / (maxLat - minLat)) * (canvas.height - 40) + 20;
       };
-      
+
       const lngToX = (lng: number) => {
         if (isNaN(lng) || maxLng === minLng) return canvas.width / 2;
         return ((lng - minLng) / (maxLng - minLng)) * (canvas.width - 40) + 20;
@@ -158,41 +163,49 @@ const Map = () => {
       // Draw user's location (blue dot)
       const userX = lngToX(userLocation.lng);
       const userY = latToY(userLocation.lat);
-      
-      ctx.fillStyle = '#2563eb';
+
+      ctx.fillStyle = "#2563eb";
       ctx.beginPath();
       ctx.arc(userX, userY, 8, 0, 2 * Math.PI);
       ctx.fill();
-      
+
       // Add user label
-      ctx.fillStyle = '#1f2937';
-      ctx.font = '12px Arial';
-      ctx.fillText('You', userX - 10, userY - 12);
+      ctx.fillStyle = "#1f2937";
+      ctx.font = "12px Arial";
+      ctx.fillText("You", userX - 10, userY - 12);
 
       // Draw nearby users
       allNearbyUsers.forEach((nearbyUser) => {
-        if (isNaN(nearbyUser.lat) || isNaN(nearbyUser.lng) || 
-            nearbyUser.lat === null || nearbyUser.lat === undefined ||
-            nearbyUser.lng === null || nearbyUser.lng === undefined) {
-          console.log("Map: Skipping user with invalid coordinates:", nearbyUser);
+        if (
+          isNaN(nearbyUser.lat) ||
+          isNaN(nearbyUser.lng) ||
+          nearbyUser.lat === null ||
+          nearbyUser.lat === undefined ||
+          nearbyUser.lng === null ||
+          nearbyUser.lng === undefined
+        ) {
+          console.log(
+            "Map: Skipping user with invalid coordinates:",
+            nearbyUser
+          );
           return;
         }
 
         const x = lngToX(nearbyUser.lng);
         const y = latToY(nearbyUser.lat);
-        
+
         // Choose color based on online status
-        ctx.fillStyle = nearbyUser.is_online ? '#10b981' : '#ef4444';
+        ctx.fillStyle = nearbyUser.is_online ? "#10b981" : "#ef4444";
         ctx.beginPath();
         ctx.arc(x, y, 6, 0, 2 * Math.PI);
         ctx.fill();
-        
+
         // Add user name
-        ctx.fillStyle = '#1f2937';
-        ctx.font = '10px Arial';
-        const userName = nearbyUser.full_name || 'Unknown';
+        ctx.fillStyle = "#1f2937";
+        ctx.font = "10px Arial";
+        const userName = nearbyUser.full_name || "Unknown";
         const textWidth = ctx.measureText(userName).width;
-        ctx.fillText(userName, x - textWidth/2, y - 10);
+        ctx.fillText(userName, x - textWidth / 2, y - 10);
       });
 
       setIsLoaded(true);
@@ -255,7 +268,7 @@ const Map = () => {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <MapPin className="h-5 w-5" />
-            <span>Live Users Map</span>
+            <span>Live Users</span>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1 text-green-600">
@@ -273,7 +286,7 @@ const Map = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="w-full h-64 rounded-lg border mb-4 relative">
+        {/* <div className="w-full h-64 rounded-lg border mb-4 relative">
           <canvas
             ref={canvasRef}
             className="w-full h-full border rounded-lg bg-blue-50"
@@ -291,14 +304,14 @@ const Map = () => {
               )}
             </div>
           )}
-        </div>
+        </div> */}
 
         <div className="space-y-3">
           <h4 className="font-medium text-sm">Users Nearby (10km radius):</h4>
           {allNearbyUsers.length === 0 ? (
             <p className="text-sm text-gray-500">No other users nearby</p>
           ) : (
-            <div className="space-y-2 max-h-56 overflow-y-auto">
+            <div className=" max-h-56 overflow-y-auto">
               {allNearbyUsers
                 .sort((a, b) =>
                   b.is_online === a.is_online ? 0 : b.is_online ? 1 : -1
@@ -307,38 +320,48 @@ const Map = () => {
                   <UserProfileModal
                     key={nearbyUser.user_id}
                     userId={nearbyUser.user_id}
-                    userName={nearbyUser.full_name || nearbyUser.username || 'Unknown User'}
+                    userName={
+                      nearbyUser.full_name ||
+                      nearbyUser.username ||
+                      "Unknown User"
+                    }
                     isOnline={nearbyUser.is_online}
                     distance={nearbyUser.distance_km}
                   >
-                    <div className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                    <div className="flex items-center space-x-3 p-2 my-2 neuromorphic hover:bg-gray-100 cursor-pointer transition-colors">
                       <div className="relative">
                         {nearbyUser.avatar_emoji ? (
-                          <div className="h-8 w-8 flex items-center justify-center text-lg bg-white rounded-full border">
+                          <div className="h-8 w-8 flex items-center justify-center text-lg rounded-full border">
                             {nearbyUser.avatar_emoji}
                           </div>
                         ) : (
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="text-xs">
-                              {(nearbyUser.full_name || 'U').charAt(0).toUpperCase()}
+                              {(nearbyUser.full_name || "U")
+                                .charAt(0)
+                                .toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         )}
                         <div
                           className={`absolute -top-1 -right-1 w-3 h-3 ${
-                            nearbyUser.is_online ? "bg-green-500" : "bg-gray-400"
+                            nearbyUser.is_online
+                              ? "bg-green-500"
+                              : "bg-gray-400"
                           } border-2 border-white rounded-full`}
                         ></div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {nearbyUser.full_name || 'Unknown User'}
+                          {nearbyUser.full_name || "Unknown User"}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
-                          at {nearbyUser.location_name || 'Unknown location'}
+                          at {nearbyUser.location_name || "Unknown location"}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {isNaN(nearbyUser.distance_km) ? 'Distance unknown' : `${nearbyUser.distance_km.toFixed(1)} km away`}
+                          {isNaN(nearbyUser.distance_km)
+                            ? "Distance unknown"
+                            : `${nearbyUser.distance_km.toFixed(1)} km away`}
                         </p>
                       </div>
                       <div className="flex items-center">

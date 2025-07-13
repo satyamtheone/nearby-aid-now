@@ -145,7 +145,7 @@ const AskHelp = () => {
                       <SelectItem key={cat.value} value={cat.value}>
                         <div className="flex items-center space-x-2">
                           <span>{cat.icon}</span>
-                          <span>{cat.label}</span>
+                          <span className="text-white">{cat.label}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -155,7 +155,7 @@ const AskHelp = () => {
 
               {/* Message Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-white mb-2">
                   Your Message *
                 </label>
                 <Textarea
@@ -173,7 +173,7 @@ const AskHelp = () => {
               {/* Urgent Toggle */}
               <div className="flex items-center justify-between  p-4  border-[0.5px] border-blue-200 backdrop-blur-md  bg-white/10  rounded-lg ">
                 <div>
-                  <p className="font-medium text-red-800">Mark as Urgent</p>
+                  <p className="font-medium text-red-700">Mark as Urgent</p>
                   <p className="text-sm text-red-600">
                     Urgent requests get higher priority
                   </p>
@@ -241,7 +241,7 @@ const AskHelp = () => {
                   Location-Based Help
                 </p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Your request will only be visible to users within 2km of your
+                  Your request will only be visible to users within 10km of your
                   location
                 </p>
               </div>

@@ -18,8 +18,12 @@ const RequestChat = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [newMessage, setNewMessage] = useState("");
-  const [userOnlineStatus, setUserOnlineStatus] = useState<{[key: string]: boolean}>({});
-  const [userDistances, setUserDistances] = useState<{[key: string]: number}>({});
+  const [userOnlineStatus, setUserOnlineStatus] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [userDistances, setUserDistances] = useState<{ [key: string]: number }>(
+    {}
+  );
   const { user, userLocation } = useAuth();
   const { messages, loading, sendMessage } = useRequestMessages(
     requestId || null
@@ -34,8 +38,8 @@ const RequestChat = () => {
 
     try {
       // Get unique user IDs from messages
-      const userIds = [...new Set(messages.map(m => m.user_id))];
-      
+      const userIds = [...new Set(messages.map((m) => m.user_id))];
+
       const { data, error } = await supabase.rpc("get_nearby_users" as any, {
         user_lat: userLocation.lat,
         user_lng: userLocation.lng,
@@ -48,7 +52,7 @@ const RequestChat = () => {
       }
 
       const nearbyUsers = (data as any[]) || [];
-      
+
       // Update online status
       const statusMap: { [key: string]: boolean } = {};
       nearbyUsers.forEach((u) => {
@@ -58,20 +62,23 @@ const RequestChat = () => {
 
       // Calculate distances for help request creator and participants
       const distanceMap: { [key: string]: number } = {};
-      
+
       if (currentRequest && userLocation) {
         // Get distance to request creator
-        const { data: creatorDistance } = await supabase.rpc("get_help_request_user_distance" as any, {
-          request_user_id: currentRequest.user_id,
-          current_user_lat: userLocation.lat,
-          current_user_lng: userLocation.lng,
-        });
-        
+        const { data: creatorDistance } = await supabase.rpc(
+          "get_help_request_user_distance" as any,
+          {
+            request_user_id: currentRequest.user_id,
+            current_user_lat: userLocation.lat,
+            current_user_lng: userLocation.lng,
+          }
+        );
+
         if (creatorDistance !== null) {
           distanceMap[currentRequest.user_id] = creatorDistance;
         }
       }
-      
+
       setUserDistances(distanceMap);
     } catch (error) {
       console.error("Error getting user status and distance:", error);
@@ -89,7 +96,7 @@ const RequestChat = () => {
   useEffect(() => {
     if (userLocation && messages.length > 0) {
       getOnlineStatusAndDistance();
-      const interval = setInterval(getOnlineStatusAndDistance, 10000); // Update every 10 seconds
+      const interval = setInterval(getOnlineStatusAndDistance, 10000);
       return () => clearInterval(interval);
     }
   }, [userLocation, messages.length, currentRequest]);
@@ -140,46 +147,46 @@ const RequestChat = () => {
       {/* Header */}
       <div className="z-50 border-b-[0.5px] border-blue-200 backdrop-blur-md  bg-black/10 sticky top-0 text-shadow-2xl text-white   text-shadow-blue-200 ">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 ">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/")}
-                  className="p-2"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex-1">
-                  <h1 className="text-lg font-semibold">Help Request Chat</h1>
-                  {currentRequest && (
-                    <div className="flex items-center space-x-2 mt-1">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${getCategoryColor(
-                          currentRequest.category
-                        )}`}
-                      >
-                        {currentRequest.category}
-                      </Badge>
-                      {currentRequest.is_urgent && (
-                        <Badge variant="destructive" className="text-xs">
-                          Urgent
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/profile")}
+                onClick={() => navigate("/")}
                 className="p-2"
               >
-                <User className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5" />
               </Button>
+              <div className="flex-1">
+                <h1 className="text-lg font-semibold">Help Request Chat</h1>
+                {currentRequest && (
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${getCategoryColor(
+                        currentRequest.category
+                      )}`}
+                    >
+                      {currentRequest.category}
+                    </Badge>
+                    {currentRequest.is_urgent && (
+                      <Badge variant="destructive" className="text-xs">
+                        Urgent
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/profile")}
+              className="p-2"
+            >
+              <User className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -201,23 +208,33 @@ const RequestChat = () => {
                   </div>
                   <UserProfileModal
                     userId={currentRequest.user_id}
-                    userName={currentRequest.profiles?.full_name || currentRequest.profiles?.username || "Anonymous"}
+                    userName={
+                      currentRequest.profiles?.full_name ||
+                      currentRequest.profiles?.username ||
+                      "Anonymous"
+                    }
                     isOnline={userOnlineStatus[currentRequest.user_id] || false}
                     distance={userDistances[currentRequest.user_id]}
                   >
-                    <button className="capitalize text-black hover:text-blue-600 transition-colors">
+                    <button className="capitalize font-bold  text-[14px] text-blue-600 transition-colors">
                       by{" "}
-                      {currentRequest.profiles?.full_name ||
-                        currentRequest.profiles?.username ||
+                      {currentRequest.profiles?.full_name.slice(0, 10) ||
+                        currentRequest.profiles?.username.slice(0, 10) ||
                         "Anonymous"}
                       {userOnlineStatus[currentRequest.user_id] && (
                         <span className="ml-2 text-green-600">●</span>
                       )}
                       {userDistances[currentRequest.user_id] && (
                         <span className="ml-2 text-xs text-gray-500">
-                          ({userDistances[currentRequest.user_id] < 1 
-                            ? `${Math.round(userDistances[currentRequest.user_id] * 1000)}m` 
-                            : `${userDistances[currentRequest.user_id].toFixed(1)}km`})
+                          (
+                          {userDistances[currentRequest.user_id] === 0
+                            ? `${Math.round(
+                                userDistances[currentRequest.user_id] * 1000
+                              )}m`
+                            : `${userDistances[currentRequest.user_id].toFixed(
+                                1
+                              )}km`}
+                          )
                         </span>
                       )}
                     </button>
@@ -239,8 +256,8 @@ const RequestChat = () => {
           <div className="space-y-4 ">
             {messages.length === 0 ? (
               <div className="text-center py-8">
-                <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">
+                <MessageCircle className="h-12 w-12 text-white mx-auto mb-3" />
+                <p className="text-white">
                   No messages yet. Start the conversation!
                 </p>
               </div>
@@ -270,13 +287,19 @@ const RequestChat = () => {
                           <UserProfileModal
                             userId={message.user_id}
                             userName={userName}
-                            isOnline={userOnlineStatus[message.user_id] || false}
+                            isOnline={
+                              userOnlineStatus[message.user_id] || false
+                            }
                             distance={userDistances[message.user_id]}
                           >
                             <button className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-                              <div className={`w-2 h-2 rounded-full ${
-                                userOnlineStatus[message.user_id] ? "bg-green-500" : "bg-gray-400"
-                              }`}></div>
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  userOnlineStatus[message.user_id]
+                                    ? "bg-green-500"
+                                    : "bg-gray-400"
+                                }`}
+                              ></div>
                               <span className="text-[13px] font-medium text-blue-600 capitalize">
                                 {userName}
                               </span>
@@ -314,14 +337,16 @@ const RequestChat = () => {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              className="flex-1 rounded-full focus:border-white focus:ring-white"
               maxLength={200}
             />
             <Button
               type="submit"
               size="sm"
               disabled={!newMessage.trim()}
-              className="rounded-full h-10 w-10 p-0 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"
+              className={`rounded-full h-10 w-10 p-0 bg-gradient-to-r from-blue-600 to-teal-600 border-2 hover:from-blue-700 hover:to-teal-700 ${
+                !newMessage.trim() ? "border-gray-400" : " border-white"
+              }`}
             >
               <Send className="h-4 w-4" />
             </Button>

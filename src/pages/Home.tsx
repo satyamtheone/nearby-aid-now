@@ -8,6 +8,9 @@ import {
   LogOut,
   Map as MapIcon,
   Globe,
+  User2Icon,
+  User2,
+  CircleUserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -56,9 +59,17 @@ const Home = () => {
     <div className="min-h-screen ">
       {/* Header */}
       <div className=" sticky top-0 z-50 border-b-[0.5px]  border-blue-200 backdrop-blur-xl  bg-black/10 text-shadow-2xl text-white   text-shadow-blue-200 ">
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 ">
+        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 relative ">
+          <div
+            className="absolute -bottom-[15px] left-[47.5%] right-[50%]"
+            onClick={() => navigate("/profile")}
+          >
+            <div>
+              <CircleUserRound className="h-10 w-10 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white backdrop-blur-xl rounded-full cursor-pointer" />
+            </div>
+          </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 ">
+            <div className="flex items-center justify-between space-x-2 ">
               <MapPin className="h-5 w-5" />
               <div>
                 <p className="text-sm">Your location</p>
@@ -67,7 +78,8 @@ const Home = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+
+            <div className="flex items-center justify-center space-x-3">
               <div className="text-right">
                 <div className="flex items-center space-x-1 text-green-600">
                   <Users className="h-4 w-4 text-white" />
@@ -75,7 +87,7 @@ const Home = () => {
                     {nearbyUsersCount}
                   </span>
                 </div>
-                <p className="text-xs ">nearby</p>
+                <p className="text-xs ">Nearby</p>
               </div>
               <Button
                 variant="ghost"
@@ -89,7 +101,10 @@ const Home = () => {
           </div>
           {user && (
             <p className="text-xs text-shadow-2xl text-white text-shadow-blue-200 mt-1">
-              Welcome, {getUserDisplayName()}
+              Welcome,{" "}
+              <span className=" font-bold capitalize">
+                {getUserDisplayName()}
+              </span>
             </p>
           )}
         </div>
@@ -97,22 +112,17 @@ const Home = () => {
 
       <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto sm:px-4 px-1 py-6 space-y-6">
         {/* Ask for Help Button */}
-        <div className=" fixed bottom-10 right-3 z-50 rounded-xl shadow-md shadow-black/20 ">
+        <div className=" fixed  sm:bottom-10 bottom-24 right-3 z-50 rounded-xl shadow-md shadow-black/20 ">
           <Button
             onClick={() => navigate("/ask-help")}
-            className="rounded-xl h-14 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            className="rounded-xl  bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
-            <MessageCircle className="mr-2 h-5 w-5" />
-            Ask for Help
+            <MessageCircle className="sm:mr-2 h-5 w-5" />
+            <span className="">Ask for Help</span>
           </Button>
         </div>
 
         {/* Map Section */}
-        {showMap && (
-          <div className=" animate-in">
-            <Map />
-          </div>
-        )}
 
         <div className=" flex flex-col md:flex-row gap-4">
           {/* Location Filter Toggle */}
@@ -125,15 +135,15 @@ const Home = () => {
                 : "border-green-200 text-green-600 hover:bg-green-50"
             }`}
           >
-            {showAllLocations ? (
+            {!showAllLocations ? (
               <>
                 <Globe className="mr-2 h-5 w-5" />
-                Showing All Locations
+                Show requests from all Locations
               </>
             ) : (
               <>
                 <MapPin className="mr-2 h-5 w-5" />
-                Showing Within 10km
+                Show users Within 10km
               </>
             )}
           </Button>
@@ -144,10 +154,15 @@ const Home = () => {
             variant="outline"
             className="w-full h-12 border-blue-200 text-blue-600 hover:bg-blue-50"
           >
-            <MapIcon className="mr-2 h-5 w-5" />
-            {showMap ? "Hide" : "Show"} Live Users Map
+            <User2Icon className="mr-2 h-5 w-5" />
+            {showMap ? "Hide" : "Show"} Live Users
           </Button>
         </div>
+        {showMap && (
+          <div className=" animate-in transition-all">
+            <Map />
+          </div>
+        )}
 
         {/* Recent Help Requests */}
         <div>
@@ -155,26 +170,30 @@ const Home = () => {
             <h2 className="text-lg font-semibold text-shadow-2xl text-white   text-shadow-blue-200">
               {showAllLocations ? "All Requests" : "Nearby Requests"}
             </h2>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={() => navigate("/chat")}
               className=" text-white"
             >
               View All
-            </Button>
+            </Button> */}
           </div>
 
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
+                <Card
+                  key={i}
+                  className="animate-pulse h-44 rounded-2xl  border-[0.5px]  border-blue-200 backdrop-blur-xl  bg-white/10"
+                >
                   <CardHeader className="pb-3">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2 mt-2"></div>
+                    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                    <div className="h-3 bg-gray-300 rounded w-full"></div>
+                    <div className="h-4 bg-gray-300 rounded w-3/4 my-4"></div>
                   </CardContent>
                 </Card>
               ))}
@@ -195,9 +214,10 @@ const Home = () => {
                 helpRequests.map((request) => (
                   <Card
                     key={request.id}
-                    className="rounded-3xl  border-[0.5px] border-blue-200 backdrop-blur-md  bg-white/10 text-white"
+                    onClick={() => handleRequestReply(request.id)}
+                    className="rounded-2xl  border-[0.5px] cursor-pointer border-blue-200 backdrop-blur-md  bg-white/10 text-white"
                   >
-                    <CardHeader className="pb-3">
+                    <CardHeader className="pb-1">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
