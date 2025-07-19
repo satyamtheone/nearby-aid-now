@@ -28,7 +28,7 @@ const RequestChat = () => {
   const { messages, loading, sendMessage } = useRequestMessages(
     requestId || null
   );
-  const { helpRequests } = useHelpRequests();
+  const { helpRequests, loading: requestLoading } = useHelpRequests();
 
   const currentRequest = helpRequests.find((req) => req.id === requestId);
 
@@ -191,8 +191,15 @@ const RequestChat = () => {
       </div>
 
       {/* Request Details */}
-      {currentRequest && (
-        <div className="">
+      {requestLoading ? (
+        <div className="px-1 sm:px-4 py-3">
+          <CardHeader className="p-5 py-10 bg-white animate-pulse rounded-lg ">
+            <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+            <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
+          </CardHeader>
+        </div>
+      ) : (
+        <div>
           <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-1 sm:px-4 py-3 ">
             <Card>
               <CardHeader className="pb-2">
@@ -249,8 +256,15 @@ const RequestChat = () => {
       {/* Messages */}
       <div className="flex-1 max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full px-1 sm:px-4 py-4 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
+          <div className="animate-pulse">
+            <CardHeader className="pb-3">
+              <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
+            </CardHeader>
+            <CardHeader className="pb-3 ">
+              <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
+            </CardHeader>
           </div>
         ) : (
           <div className="space-y-4 ">

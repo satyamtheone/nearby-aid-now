@@ -112,7 +112,7 @@ const Auth = () => {
         <Card className="w-full max-w-md max-md:max-w-lg md:max-w-xl mx-auto  px-1 sm:px-4 border-[0.5px] border-blue-200 backdrop-blur-md  bg-white/10">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-white">
-              {isLogin ? "Welcome Back" : "Join Local Buddy"}
+              {isLogin ? "Welcome Back" : "Join Local Help"}
             </CardTitle>
             <p className=" text-shadow-2xl text-white   text-shadow-blue-200">
               {isLogin
