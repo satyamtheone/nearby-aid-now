@@ -215,7 +215,7 @@ const Home = () => {
                   <Card
                     key={request.id}
                     onClick={() => handleRequestReply(request.id)}
-                    className="rounded-2xl  border-[0.5px] cursor-pointer border-blue-200 backdrop-blur-md  bg-white/10 text-white"
+                    className="rounded-xl  border-[0.5px] cursor-pointer border-blue-200 backdrop-blur-md  bg-white/10 text-white"
                   >
                     <CardHeader className="pb-1">
                       <div className="flex items-start justify-between">
