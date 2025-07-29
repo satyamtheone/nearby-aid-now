@@ -9,8 +9,8 @@ import { ArrowLeft, Mail, Lock, User } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("satyamsingh7417+2@gmail.com");
+  const [password, setPassword] = useState("Asgard@123456");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
@@ -21,6 +21,9 @@ const Auth = () => {
       navigate("/");
     }
   }, [user, navigate]);
+
+
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
