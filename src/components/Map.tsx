@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Users } from "lucide-react";
+import { MapPin, Users, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import UserProfileModal from "@/components/UserProfileModal";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 interface OnlineUser {
   user_id: string;
@@ -18,12 +20,141 @@ interface OnlineUser {
   avatar_emoji: string;
 }
 
+// Custom marker icons
+const createCustomIcon = (isOnline: boolean, avatarEmoji?: string | null) => {
+  const emoji = avatarEmoji || (isOnline ? "🟢" : "⚪");
+  return L.divIcon({
+    className: "custom-user-marker",
+    html: `
+      <div class="marker-wrapper ${isOnline ? "online" : "offline"}">
+        <div class="marker-pulse ${isOnline ? "online" : ""}"></div>
+        <div class="marker-emoji">${emoji}</div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 38],
+    popupAnchor: [0, -38],
+  });
+};
+
+const createUserIcon = (isOnline: boolean, avatarEmoji?: string | null) => {
+  const emoji = avatarEmoji || "📍";
+  return L.divIcon({
+    className: "custom-user-marker",
+    html: `
+      <div class="current-user-marker">
+        <div class="marker-pulse-user"></div>
+        <div class="marker-emoji-user">${emoji}</div>
+      </div>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 42],
+    popupAnchor: [0, -42],
+  });
+};
+
 const Map = () => {
   const { userLocation, user } = useAuth();
   const [allNearbyUsers, setAllNearbyUsers] = useState<OnlineUser[]>([]);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<{ [key: string]: L.Marker }>({});
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+
+  // Custom CSS for markers
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      .marker-wrapper {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .marker-wrapper.offline { opacity: 0.7; filter: grayscale(0.5); }
+      .marker-pulse {
+        position: absolute;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(16, 185, 129, 0.3);
+        animation: markerPulse 2s infinite;
+      }
+      .marker-pulse.online { background: rgba(16, 185, 129, 0.4); }
+      .marker-emoji {
+        position: relative;
+        font-size: 20px;
+        line-height: 1;
+        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+      }
+      .current-user-marker {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .marker-pulse-user {
+        position: absolute;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.35);
+        animation: markerPulse 1.5s infinite;
+        border: 2px solid rgba(37, 99, 235, 0.6);
+      }
+      .marker-emoji-user {
+        position: relative;
+        font-size: 22px;
+        line-height: 1;
+        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+      }
+      @keyframes markerPulse {
+        0% { transform: scale(0.8); opacity: 0.8; }
+        50% { transform: scale(1.2); opacity: 0.4; }
+        100% { transform: scale(0.8); opacity: 0.8; }
+      }
+      .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      }
+      .leaflet-popup-content {
+        margin: 12px 14px;
+        font-family: inherit;
+      }
+      .map-popup-user {
+        text-align: center;
+        min-width: 140px;
+      }
+      .map-popup-user .popup-name {
+        font-weight: 600;
+        font-size: 13px;
+        color: #1f2937;
+        text-transform: capitalize;
+      }
+      .map-popup-user .popup-location {
+        font-size: 11px;
+        color: #6b7280;
+        margin-top: 2px;
+      }
+      .map-popup-user .popup-status {
+        font-size: 11px;
+        font-weight: 500;
+        margin-top: 4px;
+      }
+      .map-popup-user .popup-status.online { color: #059669; }
+      .map-popup-user .popup-status.offline { color: #9ca3af; }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Fetch nearby users from database
   const fetchNearbyUsers = async () => {
@@ -67,194 +198,158 @@ const Map = () => {
     }
   }, [userLocation, user]);
 
-  // Initialize simple map visualization
-  const initializeMap = () => {
-    console.log("Map: initializeMap called", {
-      hasCanvas: !!canvasRef.current,
-      hasUserLocation: !!userLocation,
-      userLocation: userLocation,
-    });
+  // Initialize Leaflet map
+  useEffect(() => {
+    if (!userLocation || !mapContainerRef.current) return;
 
-    if (!canvasRef.current) {
-      console.log("Map: Canvas ref not available");
-      return false;
-    }
-
-    if (!userLocation) {
-      console.log("Map: User location not available");
-      setMapError("Location not available");
-      setIsLoaded(false);
-      return false;
-    }
-
-    try {
-      console.log("Map: Initializing simple map with users:", allNearbyUsers);
-
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        console.error("Map: Failed to get canvas context");
-        setMapError("Failed to create map context");
-        setIsLoaded(false);
-        return false;
-      }
-
-      // Set canvas size to match the display size
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw background with grid pattern
-      ctx.fillStyle = "#f0f8ff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Add a subtle grid pattern
-      ctx.strokeStyle = "#e0e8f0";
-      ctx.lineWidth = 1;
-      for (let x = 0; x <= canvas.width; x += 20) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= canvas.height; y += 20) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-
-      // Calculate bounds - ensure we have valid numbers
-      const allLats = [
-        userLocation.lat,
-        ...allNearbyUsers.map((u) => u.lat),
-      ].filter((lat) => !isNaN(lat) && lat !== null && lat !== undefined);
-      const allLngs = [
-        userLocation.lng,
-        ...allNearbyUsers.map((u) => u.lng),
-      ].filter((lng) => !isNaN(lng) && lng !== null && lng !== undefined);
-
-      if (allLats.length === 0 || allLngs.length === 0) {
-        console.log("Map: No valid coordinates to display");
-        setMapError("No valid coordinates to display");
-        setIsLoaded(false);
-        return false;
-      }
-
-      const minLat = Math.min(...allLats) - 0.01;
-      const maxLat = Math.max(...allLats) + 0.01;
-      const minLng = Math.min(...allLngs) - 0.01;
-      const maxLng = Math.max(...allLngs) + 0.01;
-
-      // Convert lat/lng to canvas coordinates
-      const latToY = (lat: number) => {
-        if (isNaN(lat) || maxLat === minLat) return canvas.height / 2;
-        return ((maxLat - lat) / (maxLat - minLat)) * (canvas.height - 40) + 20;
-      };
-
-      const lngToX = (lng: number) => {
-        if (isNaN(lng) || maxLng === minLng) return canvas.width / 2;
-        return ((lng - minLng) / (maxLng - minLng)) * (canvas.width - 40) + 20;
-      };
-
-      // Draw user's location (blue dot)
-      const userX = lngToX(userLocation.lng);
-      const userY = latToY(userLocation.lat);
-
-      ctx.fillStyle = "#2563eb";
-      ctx.beginPath();
-      ctx.arc(userX, userY, 8, 0, 2 * Math.PI);
-      ctx.fill();
-
-      // Add user label
-      ctx.fillStyle = "#1f2937";
-      ctx.font = "12px Arial";
-      ctx.fillText("You", userX - 10, userY - 12);
-
-      // Draw nearby users
-      allNearbyUsers.forEach((nearbyUser) => {
-        if (
-          isNaN(nearbyUser.lat) ||
-          isNaN(nearbyUser.lng) ||
-          nearbyUser.lat === null ||
-          nearbyUser.lat === undefined ||
-          nearbyUser.lng === null ||
-          nearbyUser.lng === undefined
-        ) {
-          console.log(
-            "Map: Skipping user with invalid coordinates:",
-            nearbyUser
-          );
-          return;
-        }
-
-        const x = lngToX(nearbyUser.lng);
-        const y = latToY(nearbyUser.lat);
-
-        // Choose color based on online status
-        ctx.fillStyle = nearbyUser.is_online ? "#10b981" : "#ef4444";
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, 2 * Math.PI);
-        ctx.fill();
-
-        // Add user name
-        ctx.fillStyle = "#1f2937";
-        ctx.font = "10px Arial";
-        const userName = nearbyUser.full_name || "Unknown";
-        const textWidth = ctx.measureText(userName).width;
-        ctx.fillText(userName, x - textWidth / 2, y - 10);
+    // Create map if it doesn't exist
+    if (!mapRef.current) {
+      console.log("Map: Creating Leaflet map instance");
+      const map = L.map(mapContainerRef.current, {
+        center: [userLocation.lat, userLocation.lng],
+        zoom: 14,
+        scrollWheelZoom: true,
+        zoomControl: true,
       });
 
+      // OpenStreetMap tiles
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      mapRef.current = map;
       setIsLoaded(true);
-      setMapError(null);
-      console.log("Map: Successfully initialized and set isLoaded to true");
-      return true;
-    } catch (error) {
-      console.error("Map: Error initializing map:", error);
-      setMapError("Failed to initialize map");
-      setIsLoaded(false);
-      return false;
+
+      // Invalidate size after a tick to ensure proper rendering
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
     }
-  };
 
-  // Initialize map when canvas is mounted and we have data
+    return () => {
+      // Don't destroy map here - clean up on unmount only
+    };
+  }, [userLocation]);
+
+  // Clean up map on unmount
   useEffect(() => {
-    if (!userLocation) return;
-
-    const checkAndInitialize = () => {
-      if (canvasRef.current) {
-        console.log("Map: Canvas is ready, initializing map");
-        const success = initializeMap();
-        if (!success) {
-          // If initialization failed, clear any error after a short delay and try again
-          setTimeout(() => {
-            setMapError(null);
-          }, 1000);
-        }
-      } else {
-        console.log("Map: Canvas not ready yet, will retry");
-        setMapError("Canvas not ready");
-        setIsLoaded(false);
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markersRef.current = {};
+        userMarkerRef.current = null;
       }
     };
+  }, []);
 
-    // Try immediately
-    checkAndInitialize();
+  // Update user marker when location changes
+  useEffect(() => {
+    if (!mapRef.current || !userLocation) return;
 
-    // Also try after a short delay to ensure canvas is mounted
-    const timeout = setTimeout(checkAndInitialize, 200);
+    // Add/update current user marker
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLatLng([userLocation.lat, userLocation.lng]);
+    } else {
+      const marker = L.marker([userLocation.lat, userLocation.lng], {
+        icon: createUserIcon(true, "🧑‍💻"),
+        zIndexOffset: 1000,
+      }).addTo(mapRef.current);
 
-    return () => clearTimeout(timeout);
-  }, [allNearbyUsers, userLocation]);
+      marker.bindPopup(
+        `<div class="map-popup-user">
+          <div class="popup-name">You</div>
+          <div class="popup-location">${
+            userLocation.name || "Your location"
+          }</div>
+          <div class="popup-status online">● Online</div>
+        </div>`
+      );
+
+      userMarkerRef.current = marker;
+    }
+  }, [userLocation, mapRef.current]);
+
+  // Update nearby user markers
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Remove markers for users no longer in the list
+    const currentIds = new Set(allNearbyUsers.map((u) => u.user_id));
+    Object.entries(markersRef.current).forEach(([id, marker]) => {
+      if (!currentIds.has(id)) {
+        mapRef.current?.removeLayer(marker);
+        delete markersRef.current[id];
+      }
+    });
+
+    // Add or update markers for each nearby user
+    allNearbyUsers.forEach((nearbyUser) => {
+      const {
+        user_id,
+        lat,
+        lng,
+        is_online,
+        avatar_emoji,
+        full_name,
+        username,
+        location_name,
+        distance_km,
+      } = nearbyUser;
+
+      if (
+        isNaN(lat) ||
+        isNaN(lng) ||
+        lat === null ||
+        lng === null ||
+        lat === undefined ||
+        lng === undefined
+      ) {
+        return;
+      }
+
+      const existingMarker = markersRef.current[user_id];
+      const displayName = full_name || username || "Unknown User";
+      const distanceText = !isNaN(distance_km)
+        ? `${distance_km.toFixed(1)} km away`
+        : "";
+      const popupContent = `
+        <div class="map-popup-user">
+          <div class="popup-name">${displayName}</div>
+          <div class="popup-location">${location_name || "Unknown location"}${
+        distanceText ? ` • ${distanceText}` : ""
+      }</div>
+          <div class="popup-status ${is_online ? "online" : "offline"}">${
+        is_online ? "● Online" : "○ Offline"
+      }</div>
+        </div>
+      `;
+
+      if (existingMarker) {
+        existingMarker.setLatLng([lat, lng]);
+        existingMarker.setIcon(createCustomIcon(is_online, avatar_emoji));
+        existingMarker.setPopupContent(popupContent);
+      } else {
+        const marker = L.marker([lat, lng], {
+          icon: createCustomIcon(is_online, avatar_emoji),
+        }).addTo(mapRef.current!);
+
+        marker.bindPopup(popupContent);
+        markersRef.current[user_id] = marker;
+      }
+    });
+  }, [allNearbyUsers, mapRef.current]);
 
   if (!userLocation) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <p className="text-gray-500">Getting your location...</p>
+          <div className="flex items-center justify-center space-x-2">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <p className="text-gray-500">Getting your location...</p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -263,12 +358,12 @@ const Map = () => {
   const onlineUsers = allNearbyUsers.filter((u) => u.is_online);
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <MapPin className="h-5 w-5" />
-            <span>Live Users</span>
+            <MapPin className="h-5 w-5 text-blue-600" />
+            <span className="text-gray-900">Live Users Map</span>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1 text-green-600">
@@ -286,32 +381,47 @@ const Map = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* <div className="w-full h-64 rounded-lg border mb-4 relative">
-          <canvas
-            ref={canvasRef}
-            className="w-full h-full border rounded-lg bg-blue-50"
-            style={{ maxWidth: '400px', maxHeight: '300px' }}
-          />
+        {/* Interactive Leaflet Map */}
+        <div className="w-full h-72 rounded-lg border overflow-hidden relative bg-blue-50 mb-4">
+          <div ref={mapContainerRef} className="w-full h-full z-0" />
           {!isLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white rounded-lg">
-              {mapError ? (
-                <div className="text-center">
-                  <p className="text-red-500 text-sm mb-2">Map Error</p>
-                  <p className="text-gray-500 text-xs">{mapError}</p>
-                </div>
-              ) : (
-                <p className="text-gray-500">Loading map...</p>
-              )}
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-[500]">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">Loading map...</p>
+              </div>
             </div>
           )}
-        </div> */}
+          {mapError && (
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-red-50 text-red-600 text-xs font-medium px-3 py-1.5 rounded-full shadow z-[500]">
+              {mapError}
+            </div>
+          )}
+          {/* Legend */}
+          <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-lg shadow px-3 py-2 text-xs space-y-1.5 z-[500]">
+            <div className="flex items-center space-x-1.5">
+              <span className="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>
+              <span className="text-gray-600 font-medium">You</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+              <span className="text-gray-600 font-medium">Online user</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <span className="w-3 h-3 rounded-full bg-gray-400 inline-block"></span>
+              <span className="text-gray-600 font-medium">Offline user</span>
+            </div>
+          </div>
+        </div>
 
         <div className="space-y-3">
-          <h4 className="font-medium text-sm">Users Nearby (10km radius):</h4>
+          <h4 className="font-medium text-sm text-gray-900">
+            Users Nearby (10km radius):
+          </h4>
           {allNearbyUsers.length === 0 ? (
             <p className="text-sm text-gray-500">No other users nearby</p>
           ) : (
-            <div className=" max-h-56 overflow-y-auto">
+            <div className="max-h-56 overflow-y-auto">
               {allNearbyUsers
                 .sort((a, b) =>
                   b.is_online === a.is_online ? 0 : b.is_online ? 1 : -1

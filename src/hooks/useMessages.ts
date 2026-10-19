@@ -1,10 +1,9 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
+import type { Database } from "@/integrations/supabase/types";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
-import type { Database } from '@/integrations/supabase/types';
-
-type Message = Database['public']['Tables']['messages']['Row'] & {
+type Message = Database["public"]["Tables"]["messages"]["Row"] & {
   profiles: {
     username: string | null;
     full_name: string | null;
@@ -14,58 +13,63 @@ type Message = Database['public']['Tables']['messages']['Row'] & {
 export function useMessages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, userLocation } = useAuth();
 
   const fetchMessages = async () => {
     try {
       const { data, error } = await supabase
-        .from('messages')
-        .select(`
+        .from("messages")
+        .select(
+          `
           *,
           profiles (
             username,
             full_name
           )
-        `)
-        .order('created_at', { ascending: true })
+        `
+        )
+        .order("created_at", { ascending: true })
         .limit(50);
 
       if (error) {
-        console.error('Error fetching messages:', error);
+        console.error("Error fetching messages:", error);
         return;
       }
 
       setMessages(data || []);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error("Error fetching messages:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const sendMessage = async (message: string) => {
-    if (!user) return { error: 'User not authenticated' };
+    if (!user) return { error: "User not authenticated" };
 
     try {
       const { data, error } = await supabase
-        .from('messages')
+        .from("messages")
         .insert({
           user_id: user.id,
           message,
-          location_name: 'Noida Sector 135', // This would come from user's location in a real app
+          location_name: userLocation?.name || null,
+          location_point: userLocation
+            ? `POINT(${userLocation.lng} ${userLocation.lat})`
+            : null,
         })
         .select()
         .single();
 
       if (error) {
-        console.error('Error sending message:', error);
+        console.error("Error sending message:", error);
         return { error: error.message };
       }
 
       return { data };
     } catch (error) {
-      console.error('Error sending message:', error);
-      return { error: 'Failed to send message' };
+      console.error("Error sending message:", error);
+      return { error: "Failed to send message" };
     }
   };
 
@@ -75,13 +79,13 @@ export function useMessages() {
 
       // Set up real-time subscription
       const channel = supabase
-        .channel('messages_changes')
+        .channel("messages_changes")
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages'
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
           },
           () => {
             fetchMessages();

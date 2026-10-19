@@ -55,6 +55,18 @@ const Home = () => {
     return user?.email || "User";
   };
 
+  // Truncate location name for header if too long
+  const getDisplayLocation = (location: string) => {
+    if (location.length > 35) {
+      const parts = location.split(",");
+      if (parts.length > 1) {
+        return `${parts[0].trim()}, ${parts[1].trim()}`;
+      }
+      return `${location.slice(0, 32)}...`;
+    }
+    return location;
+  };
+
   return (
     <div className="min-h-screen ">
       {/* Header */}
@@ -73,9 +85,19 @@ const Home = () => {
               <MapPin className="h-5 w-5" />
               <div>
                 <p className="text-sm">Your location</p>
-                <p className="font-semibold">
-                  {userLocation ? userLocation.name : "Getting location..."}
-                </p>
+                {userLocation ? (
+                  <p
+                    className="font-semibold truncate max-w-[160px] sm:max-w-[220px]"
+                    title={userLocation.name}
+                  >
+                    {getDisplayLocation(userLocation.name)}
+                  </p>
+                ) : (
+                  <p className="font-semibold flex items-center gap-1.5 text-blue-100">
+                    <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                    Getting location...
+                  </p>
+                )}
               </div>
             </div>
 
