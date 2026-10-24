@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import UserProfileModal from "@/components/UserProfileModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { parseReplyFallbackText } from "@/utils/chatMessageUtils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ActiveUser {
   user_id: string;
@@ -365,7 +366,7 @@ const Chat = () => {
             </div>
             <div className="flex items-center space-x-2">
               {loadingUsers ? (
-                <Loader2 className="h-4 w-4 text-white animate-spin" />
+                <Loader2 className="loading-spinner h-4 w-4 text-white" />
               ) : (
                 <div className="flex -space-x-1.5">
                   {onlineUsers.slice(0, 3).map((u) => (
@@ -393,7 +394,7 @@ const Chat = () => {
             <div className="mt-2 rounded-lg border-[0.5px] border-blue-200 backdrop-blur-md bg-white/10 overflow-hidden animate-in slide-in-from-top-2 duration-200">
               {loadingUsers ? (
                 <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 text-white animate-spin" />
+                  <Loader2 className="loading-spinner h-5 w-5 text-white" />
                   <span className="ml-2 text-xs text-white">
                     Loading active users...
                   </span>
@@ -472,8 +473,16 @@ const Chat = () => {
       )}
       <div className="flex-1 max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full  px-1 sm:px-4 py-4 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
+          <div className="space-y-4 py-2" role="status" aria-label="Loading messages">
+            {["start", "end", "start"].map((side, index) => (
+              <div key={index} className={`flex ${side === "end" ? "justify-end" : "justify-start"}`}>
+                <div className="w-[72%] max-w-sm rounded-2xl border border-white/15 bg-white/10 p-4">
+                  <Skeleton className="skeleton-shimmer-on-dark mb-3 h-3 w-24" />
+                  <Skeleton className="skeleton-shimmer-on-dark h-4 w-full" />
+                  <Skeleton className="skeleton-shimmer-on-dark mt-2 h-3 w-3/5" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-4">
@@ -511,7 +520,7 @@ const Chat = () => {
                     } ${highlightedMessageId === message.id ? "rounded-xl bg-amber-300/30 ring-4 ring-amber-300 shadow-xl transition-all duration-300" : "transition-all duration-300"}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-xl border-[0.5px] border-blue-200 backdrop-blur-sm  bg-white/10 px-4 py-3 ${
+                      className={`chat-message-bubble max-w-[80%] rounded-xl border-[0.5px] border-blue-200 backdrop-blur-sm bg-white/10 px-4 py-3 ${
                         isOwnMessage ? "bg-white" : ""
                       }`}
                     >
@@ -631,7 +640,7 @@ const Chat = () => {
             <Button type="button" size="sm" variant="ghost" onClick={() => setShowLinkInput((current) => !current)} className="h-9 gap-1 px-2 text-xs text-white"><LinkIcon className="h-4 w-4" /><span>Link</span></Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setShowEmojiPicker((current) => !current)} className="h-9 gap-1 px-2 text-xs text-white"><Smile className="h-4 w-4" /><span>Emoji</span></Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setShowReferencePicker((current) => !current)} className="h-9 gap-1 border border-amber-200/70 px-2 text-xs text-white"><Pin className="h-4 w-4" /><span>Reference</span></Button>
-            {uploadingMedia && <span className="text-xs text-white">Uploading…</span>}
+            {uploadingMedia && <span role="status" className="inline-flex items-center gap-1 text-xs text-white"><Loader2 className="loading-spinner h-3.5 w-3.5" />Uploading…</span>}
           </div>
           <form onSubmit={handleSendMessage} className="flex space-x-2">
             <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type your message..." className="flex-1 rounded-full border-gray-300 text-black focus:border-blue-500 focus:ring-blue-500" maxLength={1000} />

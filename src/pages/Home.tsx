@@ -72,14 +72,14 @@ const Home = () => {
       {/* Header */}
       <div className=" sticky top-0 z-50 border-b-[0.5px]  border-blue-200 backdrop-blur-xl  bg-black/10 text-shadow-2xl text-white   text-shadow-blue-200 ">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 relative ">
-          <div
-            className="absolute -bottom-[15px] left-[47.5%] right-[50%]"
+          <button
+            type="button"
+            aria-label="Open profile"
             onClick={() => navigate("/profile")}
+            className="absolute -bottom-[15px] left-1/2 z-10 -translate-x-1/2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-600"
           >
-            <div>
-              <CircleUserRound className="h-10 w-10 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white backdrop-blur-xl rounded-full cursor-pointer" />
-            </div>
-          </div>
+            <CircleUserRound className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-teal-600 text-white backdrop-blur-xl transition-colors hover:from-blue-700 hover:to-teal-700" />
+          </button>
           <div className="flex items-center justify-between">
             <div className="flex items-center justify-between space-x-2 ">
               <MapPin className="h-5 w-5" />
@@ -94,7 +94,7 @@ const Home = () => {
                   </p>
                 ) : (
                   <p className="font-semibold flex items-center gap-1.5 text-blue-100">
-                    <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                    <span className="loading-spinner inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white"></span>
                     Getting location...
                   </p>
                 )}
@@ -207,21 +207,21 @@ const Home = () => {
               {[1, 2, 3].map((i) => (
                 <Card
                   key={i}
-                  className="animate-pulse h-44 rounded-2xl  border-[0.5px]  border-blue-200 backdrop-blur-xl  bg-white/10"
+                  className="h-44 overflow-hidden rounded-2xl border-[0.5px] border-blue-200 bg-white/10 backdrop-blur-xl"
                 >
                   <CardHeader className="pb-3">
-                    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
+                    <div className="skeleton-shimmer skeleton-shimmer-on-dark h-4 w-3/4 rounded"></div>
+                    <div className="skeleton-shimmer skeleton-shimmer-on-dark mt-2 h-3 w-1/2 rounded"></div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="h-3 bg-gray-300 rounded w-full"></div>
-                    <div className="h-4 bg-gray-300 rounded w-3/4 my-4"></div>
+                    <div className="skeleton-shimmer skeleton-shimmer-on-dark h-3 w-full rounded"></div>
+                    <div className="skeleton-shimmer skeleton-shimmer-on-dark my-4 h-4 w-3/4 rounded"></div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="space-y-4 mb-32">
+            <div className="home-request-list space-y-4 mb-32">
               {helpRequests.length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-center">
@@ -237,7 +237,7 @@ const Home = () => {
                   <Card
                     key={request.id}
                     onClick={() => handleRequestReply(request.id)}
-                    className="rounded-xl  border-[0.5px] cursor-pointer border-blue-200 backdrop-blur-md  bg-white/10 text-white"
+                    className="home-request-card rounded-xl border-[0.5px] cursor-pointer border-blue-200 backdrop-blur-md bg-white/10 text-white hover:border-white/50 hover:bg-white/15 hover:shadow-lg"
                   >
                     <CardHeader className="pb-1">
                       <div className="flex items-start justify-between">

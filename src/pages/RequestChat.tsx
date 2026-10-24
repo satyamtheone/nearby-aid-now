@@ -13,6 +13,7 @@ import {
   MapPin,
   Smile,
   X,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseReplyFallbackText } from "@/utils/chatMessageUtils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const RequestChat = () => {
   const navigate = useNavigate();
@@ -187,7 +189,7 @@ const RequestChat = () => {
       console.error("Request fulfillment failed:", error);
       const description =
         error?.code === "PGRST202"
-          ? "The Supabase fulfillment migration is missing. Apply the new migrations, then reload and try again."
+          ? "Supabase is missing the fulfill_help_request function. Apply 20261024010000_atomic_request_fulfillment.sql after 20261024000000_request_fulfillment_feedback.sql in the Supabase SQL Editor, then reload this page and try again."
           : `${error?.message || "A network error occurred."}${
               error?.details ? ` ${error.details}` : ""
             }${error?.hint ? ` ${error.hint}` : ""}`;
@@ -574,9 +576,9 @@ const RequestChat = () => {
       {/* Request Details */}
       {requestLoading ? (
         <div className="px-1 sm:px-4 py-3">
-          <CardHeader className="p-5 py-10 bg-white animate-pulse rounded-lg ">
-            <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-            <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
+          <CardHeader className="rounded-lg border border-white/20 bg-white/10 p-5 py-10 backdrop-blur-md">
+            <div className="skeleton-shimmer skeleton-shimmer-on-dark h-4 w-3/4 rounded"></div>
+            <div className="skeleton-shimmer skeleton-shimmer-on-dark mt-2 h-3 w-1/2 rounded"></div>
           </CardHeader>
         </div>
       ) : (
@@ -661,15 +663,16 @@ const RequestChat = () => {
       {/* Messages */}
       <div className="flex-1 max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full px-1 sm:px-4 py-4 overflow-y-auto">
         {loading ? (
-          <div className="animate-pulse">
-            <CardHeader className="pb-3">
-              <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
-            </CardHeader>
-            <CardHeader className="pb-3 ">
-              <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
-            </CardHeader>
+          <div className="space-y-4 py-2" role="status" aria-label="Loading request messages">
+            {["start", "end"].map((side, index) => (
+              <div key={index} className={`flex ${side === "end" ? "justify-end" : "justify-start"}`}>
+                <div className="w-[72%] max-w-sm rounded-2xl border border-white/15 bg-white/10 p-4">
+                  <Skeleton className="skeleton-shimmer-on-dark mb-3 h-3 w-24" />
+                  <Skeleton className="skeleton-shimmer-on-dark h-4 w-full" />
+                  <Skeleton className="skeleton-shimmer-on-dark mt-2 h-3 w-3/5" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-4 ">
@@ -730,7 +733,7 @@ const RequestChat = () => {
                     }`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-xl px-4 py-3 border-[0.5px] border-blue-200 backdrop-blur-md bg-white/10 
+                      className={`chat-message-bubble max-w-[80%] rounded-xl px-4 py-3 border-[0.5px] border-blue-200 backdrop-blur-md bg-white/10
                         
                       `}
                     >
@@ -1038,7 +1041,7 @@ const RequestChat = () => {
                 Emoji
               </Button>
               {uploadingMedia && (
-                <span className="text-xs text-white">Uploading…</span>
+                <span role="status" className="inline-flex items-center gap-1 text-xs text-white"><Loader2 className="loading-spinner h-3.5 w-3.5" />Uploading…</span>
               )}
             </div>
             <form onSubmit={handleSendMessage} className="flex space-x-2">

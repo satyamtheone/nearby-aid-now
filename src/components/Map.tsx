@@ -347,7 +347,7 @@ const Map = () => {
       <Card>
         <CardContent className="p-6 text-center">
           <div className="flex items-center justify-center space-x-2">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <Loader2 className="loading-spinner h-5 w-5 text-blue-600" />
             <p className="text-gray-500">Getting your location...</p>
           </div>
         </CardContent>
@@ -387,7 +387,7 @@ const Map = () => {
           {!isLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-[500]">
               <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                <Loader2 className="loading-spinner mx-auto mb-2 h-8 w-8 text-blue-600" />
                 <p className="text-gray-500 text-sm">Loading map...</p>
               </div>
             </div>

@@ -115,3 +115,6 @@ $$;
 
 REVOKE ALL ON FUNCTION public.fulfill_help_request(UUID, UUID, INTEGER, TEXT, BOOLEAN) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.fulfill_help_request(UUID, UUID, INTEGER, TEXT, BOOLEAN) TO authenticated;
+
+-- Refresh PostgREST's function/schema cache so the RPC is available immediately.
+NOTIFY pgrst, 'reload schema';

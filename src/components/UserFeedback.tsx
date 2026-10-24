@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 
 type FeedbackEntry = { id: string; rating: number; feedback: string; created_at: string };
@@ -32,7 +33,7 @@ export default function UserFeedback({ userId }: { userId: string }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {loading ? <p className="text-sm text-gray-500">Loading feedback...</p> : entries.length ? entries.map((entry) => (
+        {loading ? <div className="space-y-3"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-4/5" /></div> : entries.length ? entries.map((entry) => (
           <div key={entry.id} className="border-b last:border-b-0 pb-3 last:pb-0">
             <div className="flex items-center gap-1" aria-label={`${entry.rating} out of 5 stars`}>
               {Array.from({ length: 5 }, (_, index) => <Star key={index} className={`h-4 w-4 ${index < entry.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />)}

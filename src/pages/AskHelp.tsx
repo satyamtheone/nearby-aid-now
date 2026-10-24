@@ -219,7 +219,7 @@ const AskHelp = () => {
                 }
               >
                 {isSubmitting ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+                  <div className="loading-spinner mr-2 h-5 w-5 rounded-full border-2 border-white border-t-transparent" />
                 ) : (
                   <Send className="mr-2 h-5 w-5" />
                 )}

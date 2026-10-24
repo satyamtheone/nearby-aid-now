@@ -88,7 +88,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen   flex flex-col bg-gradient-to-br from-teal-400 via-purple-500 to-blue-600 animate-gradient-xy text-shadow-2xl text-white   text-shadow-blue-200 ">
+    <div className="page-enter min-h-screen flex flex-col bg-gradient-to-br from-teal-400 via-purple-500 to-blue-600 animate-gradient-xy text-shadow-2xl text-white text-shadow-blue-200">
       {/* Header */}
       <div className=" border-b-[0.5px] border-blue-200 backdrop-blur-md  bg-white/10">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full  px-1 sm:px-4 py-4">
@@ -170,7 +170,7 @@ const Auth = () => {
                 disabled={loading}
               >
                 {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+                  <div className="loading-spinner mr-2 h-5 w-5 rounded-full border-2 border-white border-t-transparent" />
                 ) : null}
                 {loading
                   ? "Please wait..."

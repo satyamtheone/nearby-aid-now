@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import UserFeedback from "@/components/UserFeedback";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserProfile {
   id: string;
@@ -123,8 +124,21 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
+          <div className="space-y-4 py-2">
+            <Card>
+              <CardContent className="flex flex-col items-center gap-3 pt-6">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><Skeleton className="h-4 w-32" /></CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <div className="space-y-4">
