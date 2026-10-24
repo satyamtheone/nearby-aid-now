@@ -1,11 +1,13 @@
-let registeredFcmToken: string | null = null;
+export type PushPlatform = "android" | "web";
 
-export const rememberFcmToken = (token: string) => {
-  registeredFcmToken = token;
+const registeredFcmTokens = new Map<PushPlatform, string>();
+
+export const rememberFcmToken = (token: string, platform: PushPlatform = "android") => {
+  registeredFcmTokens.set(platform, token);
 };
 
-export const takeFcmToken = () => {
-  const token = registeredFcmToken;
-  registeredFcmToken = null;
+export const takeFcmToken = (platform: PushPlatform = "android") => {
+  const token = registeredFcmTokens.get(platform) ?? null;
+  registeredFcmTokens.delete(platform);
   return token;
 };

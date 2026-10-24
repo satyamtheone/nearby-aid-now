@@ -147,8 +147,17 @@ export function useHelpRequests() {
           'notify-nearby-request',
           { body: { requestId } },
         );
-        notificationError = error?.message ||
-          (notificationResult?.failed > 0 ? 'Some nearby notifications could not be delivered.' : null);
+        notificationError = error?.message || (
+          notificationResult?.reason === 'request_location_missing'
+            ? 'Your request was posted, but it has no location for nearby alerts.'
+            : notificationResult?.reason === 'no_registered_devices_in_range'
+              ? 'Your request was posted, but no nearby devices have notifications enabled.'
+              : notificationResult?.failed > 0
+                ? `${notificationResult.failed} nearby notification(s) could not be delivered.`
+                : notificationResult?.sent === 0
+                  ? 'Your request was posted, but no notifications were delivered.'
+                  : null
+        );
       } catch (error) {
         notificationError = error instanceof Error
           ? error.message

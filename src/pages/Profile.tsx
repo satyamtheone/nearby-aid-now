@@ -31,6 +31,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import UserFeedback from "@/components/UserFeedback";
+import { WebPushSettings } from "@/components/WebPushSettings";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -233,6 +234,8 @@ const Profile = () => {
 
       {/* Profile Form */}
       <div className=" max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 space-y-6   text-white">
+        <WebPushSettings />
+
         {/* Basic Information */}
         <Card className=" backdrop-blur-xl  bg-white/10 text-white">
           <CardHeader>

@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
+import { WebPushManager } from "@/components/WebPushManager";
 const Home = lazy(() => import("./pages/Home"));
 const AskHelp = lazy(() => import("./pages/AskHelp"));
 const Chat = lazy(() => import("./pages/Chat"));
@@ -74,6 +75,7 @@ const App = () => (
         <BrowserRouter>
           <NativeAuthRedirectHandler />
           <PushNotificationManager />
+          <WebPushManager />
           <Suspense
             fallback={
               <div className="safe-area-top flex min-h-dvh items-center justify-center bg-gradient-to-br from-teal-400 via-purple-400 to-blue-500 text-white">

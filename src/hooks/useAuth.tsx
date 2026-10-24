@@ -341,6 +341,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error("Could not remove device notification registration:", tokenError.code);
         }
       }
+    } else if (user) {
+      const token = takeFcmToken("web");
+      if (token) {
+        const { error: tokenError } = await supabase.rpc(
+          "unregister_user_push_token",
+          { p_token: token, p_platform: "web" }
+        );
+        if (tokenError) {
+          console.error("Could not remove this browser's notification registration:", tokenError.code);
+        }
+      }
     }
 
     if (user && userLocation) {

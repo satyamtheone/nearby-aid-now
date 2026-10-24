@@ -76,7 +76,7 @@ const AskHelp = () => {
           title: "Help Request Sent!",
           description: notificationError
             ? `Your request is posted, but nearby push notifications could not be confirmed. ${notificationError}`
-            : "Your request was posted and sent to nearby registered Android devices.",
+            : "Your request was posted and sent to nearby devices with notifications enabled.",
         });
         navigate("/");
       }

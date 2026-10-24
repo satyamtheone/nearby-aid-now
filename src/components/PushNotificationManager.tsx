@@ -5,6 +5,7 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { rememberFcmToken } from "@/lib/pushRegistration";
+import { toast } from "@/hooks/use-toast";
 
 const isRequestId = (value: unknown): value is string =>
   typeof value === "string" &&
@@ -32,6 +33,13 @@ export function PushNotificationManager() {
 
       listeners.push(await PushNotifications.addListener("registrationError", ({ error }) => {
         console.error("Android push registration failed:", error);
+      }));
+
+      listeners.push(await PushNotifications.addListener("pushNotificationReceived", (notification) => {
+        toast({
+          title: notification.title || "Nearby help request",
+          description: notification.body || "A neighbor nearby needs help.",
+        });
       }));
 
       listeners.push(await PushNotifications.addListener("pushNotificationActionPerformed", ({ notification }) => {

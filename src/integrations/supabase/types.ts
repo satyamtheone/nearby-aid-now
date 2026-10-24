@@ -410,6 +410,14 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: { push_token_id: string; recipient_id: string; token: string }[]
       }
+      register_user_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: undefined
+      }
+      unregister_user_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: undefined
+      }
       register_android_push_token: {
         Args: { p_token: string }
         Returns: undefined

@@ -159,7 +159,9 @@ Deno.serve(async (request) => {
   if (!helpRequest || helpRequest.user_id !== user.id || helpRequest.is_resolved) {
     return jsonResponse({ error: "Request not found or not owned by this user" }, 404);
   }
-  if (!helpRequest.location_point) return jsonResponse({ sent: 0, failed: 0 });
+  if (!helpRequest.location_point) {
+    return jsonResponse({ sent: 0, failed: 0, targeted: 0, reason: "request_location_missing" });
+  }
 
   const { data: targets, error: targetError } = await admin.rpc(
     "get_request_push_targets",
@@ -170,7 +172,9 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "Could not find nearby registered devices" }, 500);
   }
   const pushTargets = (targets || []) as PushTarget[];
-  if (!pushTargets.length) return jsonResponse({ sent: 0, failed: 0 });
+  if (!pushTargets.length) {
+    return jsonResponse({ sent: 0, failed: 0, targeted: 0, reason: "no_registered_devices_in_range" });
+  }
 
   const { error: queueError } = await admin.from("request_push_deliveries").upsert(
     pushTargets.map((target) => ({
@@ -230,6 +234,18 @@ Deno.serve(async (request) => {
     .trim()
     .slice(0, 80);
   const notificationBody = `${messageText}${location ? ` · ${location}` : ""}`.slice(0, 240);
+  const configuredWebOrigin = Deno.env.get("WEB_APP_ORIGIN")?.trim();
+  let webChatLink: string | undefined;
+  if (configuredWebOrigin) {
+    try {
+      const parsedOrigin = new URL(configuredWebOrigin);
+      if (parsedOrigin.protocol === "https:") {
+        webChatLink = `${parsedOrigin.origin}/chat/${requestId}`;
+      }
+    } catch {
+      console.error("WEB_APP_ORIGIN is invalid; browser notification links are disabled");
+    }
+  }
 
   await Promise.all(Array.from({ length: workerCount }, async () => {
     while (nextDelivery < pending.length) {
@@ -265,6 +281,9 @@ Deno.serve(async (request) => {
                   priority: "HIGH",
                   notification: { channel_id: "nearby-requests" },
                 },
+                webpush: webChatLink
+                  ? { fcm_options: { link: webChatLink } }
+                  : undefined,
               },
             }),
           },
@@ -304,5 +323,5 @@ Deno.serve(async (request) => {
     }
   }));
 
-  return jsonResponse({ sent, failed });
+  return jsonResponse({ sent, failed, targeted: pushTargets.length });
 });
