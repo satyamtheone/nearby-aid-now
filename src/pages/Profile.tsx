@@ -210,9 +210,9 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-dvh ">
       {/* Header */}
-      <div className="sticky top-0 z-50 border-b-[0.5px] border-blue-200 backdrop-blur-2xl  bg-black/10 text-shadow-2xl text-white">
+      <div className="safe-area-top sticky top-0 z-50 border-b-[0.5px] border-blue-200 backdrop-blur-2xl bg-black/10 text-shadow-2xl text-white">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4  py-4">
           <div className="flex items-center space-x-3">
             <Button

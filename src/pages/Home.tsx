@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect } from "react";
 import {
   MapPin,
   Users,
@@ -19,11 +19,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useHelpRequests } from "@/hooks/useHelpRequests";
 import { formatTime } from "@/utils/timeUtils";
-import Map from "@/components/Map";
+const Map = lazy(() => import("@/components/Map"));
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, signOut, userLocation, nearbyUsersCount } = useAuth();
+  const { user, signOut, userLocation, locationLoading, nearbyUsersCount } = useAuth();
   const { helpRequests, loading, showAllLocations, toggleLocationFilter } =
     useHelpRequests();
   const [showMap, setShowMap] = useState(false);
@@ -68,9 +68,9 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-dvh ">
       {/* Header */}
-      <div className=" sticky top-0 z-50 border-b-[0.5px]  border-blue-200 backdrop-blur-xl  bg-black/10 text-shadow-2xl text-white   text-shadow-blue-200 ">
+      <div className="safe-area-top sticky top-0 z-50 border-b-[0.5px]  border-blue-200 backdrop-blur-xl  bg-black/10 text-shadow-2xl text-white   text-shadow-blue-200 ">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 relative ">
           <button
             type="button"
@@ -92,11 +92,13 @@ const Home = () => {
                   >
                     {getDisplayLocation(userLocation.name)}
                   </p>
-                ) : (
+                ) : locationLoading ? (
                   <p className="font-semibold flex items-center gap-1.5 text-blue-100">
                     <span className="loading-spinner inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white"></span>
-                    Getting location...
+                    Finding your location…
                   </p>
+                ) : (
+                  <p className="font-semibold text-sm text-blue-100">Location unavailable</p>
                 )}
               </div>
             </div>
@@ -134,7 +136,7 @@ const Home = () => {
 
       <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto sm:px-4 px-1 py-6 space-y-6">
         {/* Ask for Help Button */}
-        <div className=" fixed  bottom-10 right-3 z-50 rounded-xl shadow-md shadow-black/20 ">
+        <div className="fixed bottom-[calc(2.5rem+env(safe-area-inset-bottom,0px))] right-3 z-50 rounded-xl shadow-md shadow-black/20">
           <Button
             onClick={() => navigate("/ask-help")}
             className="rounded-xl  bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
@@ -181,8 +183,10 @@ const Home = () => {
           </Button>
         </div>
         {showMap && (
-          <div className=" animate-in transition-all">
-            <Map />
+          <div className="animate-in transition-all">
+            <Suspense fallback={<div role="status" className="h-72 animate-pulse rounded-lg bg-white/10" />}>
+              <Map />
+            </Suspense>
           </div>
         )}
 

@@ -3,11 +3,14 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { reverseGeocode } from "@/utils/geocoding";
+import { Capacitor } from "@capacitor/core";
+import { Geolocation } from "@capacitor/geolocation";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  locationLoading: boolean;
   userLocation: { lat: number; lng: number; name: string } | null;
   nearbyUsersCount: number;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -36,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -43,61 +47,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [nearbyUsersCount, setNearbyUsersCount] = useState(0);
 
-  // Get user's current location with Google geocoding
-  const getCurrentLocation = (): Promise<{
+  // Use Capacitor's native location provider in Android and the browser API on web.
+  const getCurrentLocation = async (): Promise<{
     lat: number;
     lng: number;
     name: string;
   }> => {
-    return new Promise(async (resolve) => {
-      if (!navigator.geolocation) {
-        console.error("Geolocation is not supported by this browser");
-        const fallbackLocation = {
-          lat: 28.5355,
-          lng: 77.391,
-          name: await reverseGeocode(28.5355, 77.391),
-        };
-        resolve(fallbackLocation);
-        return;
-      }
-
-      console.log("Starting geolocation request...");
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          console.log("Raw location obtained:", {
-            lat: latitude,
-            lng: longitude,
-          });
-
-          // Get location name using Google's geocoding API
-          const locationName = await reverseGeocode(latitude, longitude);
-
-          const location = {
-            lat: latitude,
-            lng: longitude,
-            name: locationName,
-          };
-
-          console.log("Final location with Google geocoding:", location);
-          resolve(location);
-        },
-        async (error) => {
-          console.error("Geolocation error:", error);
-          const fallbackLocation = {
-            lat: 28.5355,
-            lng: 77.391,
-            name: await reverseGeocode(28.5355, 77.391),
-          };
-          resolve(fallbackLocation);
-        },
-        {
+    const coords = Capacitor.isNativePlatform()
+      ? await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000, // 1 minute
-        }
-      );
-    });
+          timeout: 15000,
+          maximumAge: 60000,
+        }).then(({ coords: position }) => position)
+      : await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("Geolocation is not supported by this browser"));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 60000,
+          });
+        }).then(({ coords: position }) => position);
+
+    const name = await reverseGeocode(coords.latitude, coords.longitude);
+    return { lat: coords.latitude, lng: coords.longitude, name };
   };
 
   // Set user online status
@@ -235,7 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    console.log("Initializing location with Google geocoding for user:", user.email);
+    setLocationLoading(true);
+    console.log("Initializing location for authenticated user");
 
     try {
       // Get current location with Google geocoding
@@ -254,13 +230,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     } catch (error) {
       console.error("Error initializing location:", error);
-      // Set fallback location
-      const fallback = {
-        lat: 28.5355,
-        lng: 77.391,
-        name: "28.5355, 77.3910",
-      };
-      setUserLocation(fallback);
+      // Never substitute a fixed location: it could expose the wrong nearby users.
+      setUserLocation(null);
+    } finally {
+      setLocationLoading(false);
     }
   };
 
@@ -338,7 +311,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = Capacitor.isNativePlatform()
+      ? "com.nearbyaidnow.app://auth"
+      : `${window.location.origin}/`;
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -383,6 +358,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         session,
         loading,
+        locationLoading,
         userLocation,
         nearbyUsersCount,
         signIn,

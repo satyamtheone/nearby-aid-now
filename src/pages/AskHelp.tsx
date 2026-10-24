@@ -20,7 +20,7 @@ import type { Database } from "@/integrations/supabase/types";
 const AskHelp = () => {
   const navigate = useNavigate();
   const { createHelpRequest } = useHelpRequests();
-  const { userLocation } = useAuth();
+  const { userLocation, locationLoading } = useAuth();
   const [category, setCategory] = useState<
     Database["public"]["Enums"]["help_category"] | ""
   >("");
@@ -90,9 +90,9 @@ const AskHelp = () => {
   };
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-dvh ">
       {/* Header */}
-      <div className="border-[0.5px] sticky top-0 z-50 border-blue-200 backdrop-blur-md  bg-white/10 text-shadow-2xl text-white   text-shadow-blue-200">
+      <div className="safe-area-top border-[0.5px] sticky top-0 z-50 border-blue-200 backdrop-blur-md  bg-white/10 text-shadow-2xl text-white   text-shadow-blue-200">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-1 sm:px-4 py-4">
           <div className="flex items-center space-x-3">
             <Button
@@ -107,7 +107,7 @@ const AskHelp = () => {
               <h1 className="text-lg font-semibold">Ask for Help</h1>
               <p className="text-sm flex items-center">
                 <MapPin className="h-3 w-3 mr-1" />
-                {userLocation ? userLocation.name : "Getting location..."}
+                {userLocation?.name || (locationLoading ? "Finding your location…" : "Location unavailable")}
               </p>
             </div>
           </div>

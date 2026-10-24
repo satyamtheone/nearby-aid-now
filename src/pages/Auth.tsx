@@ -9,8 +9,8 @@ import { ArrowLeft, Mail, Lock, User } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("satyamsingh7417+2@gmail.com");
-  const [password, setPassword] = useState("Asgard@123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
@@ -88,7 +88,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="page-enter min-h-screen flex flex-col bg-gradient-to-br from-teal-400 via-purple-500 to-blue-600 animate-gradient-xy text-shadow-2xl text-white text-shadow-blue-200">
+    <div className="page-enter min-h-dvh flex flex-col bg-gradient-to-br from-teal-400 via-purple-500 to-blue-600 animate-gradient-xy text-shadow-2xl text-white text-shadow-blue-200">
       {/* Header */}
       <div className=" border-b-[0.5px] border-blue-200 backdrop-blur-md  bg-white/10">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full  px-1 sm:px-4 py-4">

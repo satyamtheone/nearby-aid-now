@@ -63,7 +63,7 @@ const Chat = () => {
     [key: string]: boolean;
   }>({});
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const { user, userLocation } = useAuth();
+  const { user, userLocation, locationLoading } = useAuth();
   const { messages, loading, sendMessage, fetchMessageById } = useMessages();
 
   const fetchPinnedMessage = async () => {
@@ -312,9 +312,9 @@ const Chat = () => {
   const onlineUsers = activeUsers.filter((u) => u.is_online);
 
   return (
-    <div className="min-h-screen  flex flex-col text-shadow-2xl text-white   text-shadow-blue-200">
+    <div className="min-h-dvh flex flex-col text-shadow-2xl text-white text-shadow-blue-200">
       {/* Header */}
-      <div className="shadow-sm  sticky top-0 border-b-[0.5px] border-blue-200 backdrop-blur-2xl  bg-black/10 z-50 ">
+      <div className="safe-area-top shadow-sm sticky top-0 border-b-[0.5px] border-blue-200 backdrop-blur-2xl bg-black/10 z-50">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -330,7 +330,7 @@ const Chat = () => {
                 <h1 className="text-lg font-semibold">Community Chat</h1>
                 <p className="text-sm  flex items-center">
                   <MapPin className="h-3 w-3 mr-1" />
-                  {userLocation?.name || "Getting location..."} • 2km radius
+                  {userLocation?.name || (locationLoading ? "Finding your location…" : "Location unavailable")} • 2km radius
                 </p>
               </div>
             </div>
@@ -601,7 +601,7 @@ const Chat = () => {
       </div>
 
       {/* Message Input */}
-      <div className=" p-4 sticky bottom-0 border-t-[0.5px] border-blue-200 backdrop-blur-2xl  bg-white/10">
+      <div className="safe-area-bottom p-4 sticky bottom-0 border-t-[0.5px] border-blue-200 backdrop-blur-2xl bg-white/10">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto sm:px-4 px-1">
           <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMediaSelected} />
           {showLinkInput && (

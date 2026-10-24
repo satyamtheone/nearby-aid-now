@@ -500,7 +500,7 @@ const RequestChat = () => {
 
   if (!requestId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
+      <div className="min-h-dvh bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500">No request selected</p>
           <Button onClick={() => navigate("/")} className="mt-4">
@@ -512,9 +512,9 @@ const RequestChat = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-dvh flex flex-col">
       {/* Header */}
-      <div className="z-50 border-b-[0.5px] border-blue-200 backdrop-blur-md  bg-black/10 sticky top-0 text-shadow-2xl text-white   text-shadow-blue-200 ">
+      <div className="safe-area-top z-50 border-b-[0.5px] border-blue-200 backdrop-blur-md bg-black/10 sticky top-0 text-shadow-2xl text-white text-shadow-blue-200">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 ">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -887,7 +887,7 @@ const RequestChat = () => {
 
       {/* Message Input */}
       {!currentRequest?.is_resolved && (
-        <div className=" border-t-[0.5px] border-blue-200 backdrop-blur-md  bg-black/10 sticky bottom-0 p-4">
+        <div className="safe-area-bottom border-t-[0.5px] border-blue-200 backdrop-blur-md bg-black/10 sticky bottom-0 p-4">
           <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto">
             <input
               ref={fileInputRef}
