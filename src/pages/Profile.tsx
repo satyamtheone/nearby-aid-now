@@ -12,6 +12,7 @@ import {
   Linkedin,
   Twitter,
   Link,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,11 +30,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import UserFeedback from "@/components/UserFeedback";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const avatarFileInputRef = React.useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [profileData, setProfileData] = useState({
     full_name: "",
     username: "",
@@ -113,6 +118,7 @@ const Profile = () => {
           other: (data.social_links as any)?.other || "",
         });
         setAvatarEmoji(data.avatar_emoji || "");
+        setAvatarUrl(data.avatar_url || "");
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -124,6 +130,37 @@ const Profile = () => {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const uploadProfilePicture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Choose an image", description: "Profile pictures must be image files.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Image is too large", description: "Choose an image smaller than 10 MB.", variant: "destructive" });
+      return;
+    }
+
+    const extension = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "jpg";
+    const path = `${user.id}/profile/${crypto.randomUUID()}.${extension}`;
+    setUploadingAvatar(true);
+    try {
+      const { error } = await supabase.storage.from("community-media").upload(path, file, {
+        cacheControl: "3600", contentType: file.type, upsert: false,
+      });
+      if (error) throw error;
+      setAvatarUrl(supabase.storage.from("community-media").getPublicUrl(path).data.publicUrl);
+      toast({ title: "Picture uploaded", description: "Save your profile to publish this picture." });
+    } catch (error: any) {
+      console.error("Profile picture upload failed:", error);
+      toast({ title: "Could not upload picture", description: error?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleSave = async () => {
@@ -141,6 +178,7 @@ const Profile = () => {
         current_address: profileData.current_address.trim() || null,
         social_links: socialLinks,
         avatar_emoji: avatarEmoji || null,
+        avatar_url: avatarUrl || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -271,6 +309,30 @@ const Profile = () => {
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile Picture */}
+        <Card className="border-b-[0.5px] border-blue-200 backdrop-blur-2xl bg-white/10 text-white">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Camera className="h-5 w-5" />
+              <span>Profile Picture</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center gap-4">
+            <input ref={avatarFileInputRef} type="file" accept="image/*" className="hidden" onChange={uploadProfilePicture} />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Profile preview" className="h-20 w-20 rounded-full border-2 border-white/70 object-cover" />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-white/40 bg-white/10 text-3xl">{avatarEmoji || <User className="h-8 w-8" />}</div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" disabled={uploadingAvatar} onClick={() => avatarFileInputRef.current?.click()}>
+                {uploadingAvatar ? "Uploading..." : "Choose picture"}
+              </Button>
+              {avatarUrl && <Button type="button" variant="ghost" onClick={() => setAvatarUrl("")}>Remove</Button>}
             </div>
           </CardContent>
         </Card>
@@ -466,11 +528,13 @@ const Profile = () => {
           </CardContent>
         </Card>
 
+        {user && <UserFeedback userId={user.id} />}
+
         {/* Save Button */}
         <div className="flex justify-end sticky bottom-5">
           <Button
             onClick={handleSave}
-            disabled={loading}
+            disabled={loading || uploadingAvatar}
             className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"
           >
             <Save className="h-4 w-4" />

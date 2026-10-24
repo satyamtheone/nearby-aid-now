@@ -7,6 +7,11 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Image as ImageIcon,
+  Video,
+  Link as LinkIcon,
+  Smile,
+  Pin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +23,8 @@ import { useMessages } from "@/hooks/useMessages";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import UserProfileModal from "@/components/UserProfileModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { parseReplyFallbackText } from "@/utils/chatMessageUtils";
 
 interface ActiveUser {
   user_id: string;
@@ -34,7 +41,21 @@ interface ActiveUser {
 const Chat = () => {
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [replyToMessageId, setReplyToMessageId] = useState<string | null>(null);
+  const [linkInput, setLinkInput] = useState("");
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showReferencePicker, setShowReferencePicker] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [pinnedMessage, setPinnedMessage] = useState<any>(null);
+  const [pinningMessageId, setPinningMessageId] = useState<string | null>(null);
+  const [pendingJumpId, setPendingJumpId] = useState<string | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<{ type: "image" | "video"; url: string; name?: string } | null>(null);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [showActiveUsers, setShowActiveUsers] = useState(false);
   const [userOnlineStatus, setUserOnlineStatus] = useState<{
@@ -42,7 +63,31 @@ const Chat = () => {
   }>({});
   const [loadingUsers, setLoadingUsers] = useState(false);
   const { user, userLocation } = useAuth();
-  const { messages, loading, sendMessage } = useMessages();
+  const { messages, loading, sendMessage, fetchMessageById } = useMessages();
+
+  const fetchPinnedMessage = async () => {
+    const { data: pin, error } = await supabase.from("community_chat_pin")
+      .select("message_id, pinned_by, created_at").eq("id", true).maybeSingle();
+    if (error) {
+      console.error("Unable to fetch pinned community message:", error);
+      return;
+    }
+    if (!pin) {
+      setPinnedMessage(null);
+      return;
+    }
+    const { data: message, error: messageError } = await supabase.from("messages")
+      .select("*, profiles(username, full_name, avatar_url)").eq("id", pin.message_id).maybeSingle();
+    if (!messageError) setPinnedMessage(message ? { ...message, pinned_by: pin.pinned_by } : null);
+  };
+
+  useEffect(() => {
+    fetchPinnedMessage();
+    const channel = supabase.channel("community_chat_pin_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "community_chat_pin" }, fetchPinnedMessage)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // Get online users and their status
   const getOnlineUsers = async (showLoader = false) => {
@@ -101,6 +146,32 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
+  const jumpToMessage = async (messageId: string) => {
+    setPendingJumpId(messageId);
+    if (!messages.some((message) => message.id === messageId)) {
+      const result = await fetchMessageById(messageId);
+      if (result.error || !result.data) {
+        setPendingJumpId(null);
+        toast({ title: "Referenced message unavailable", description: result.error || "This message may have been removed.", variant: "destructive" });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!pendingJumpId) return;
+    const element = messageRefs.current[pendingJumpId];
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedMessageId(pendingJumpId);
+    setPendingJumpId(null);
+    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+    highlightTimeoutRef.current = setTimeout(() => setHighlightedMessageId(null), 2400);
+  }, [pendingJumpId, messages]);
+
+  useEffect(() => () => {
+    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+  }, []);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -108,7 +179,7 @@ const Chat = () => {
     const messageText = newMessage.trim();
     setNewMessage("");
 
-    const { error } = await sendMessage(messageText);
+    const { error, warning } = await sendMessage(messageText, { reply_to_message_id: replyToMessageId });
     if (error) {
       toast({
         title: "Error",
@@ -116,7 +187,111 @@ const Chat = () => {
         variant: "destructive",
       });
       setNewMessage(messageText);
+    } else {
+      setReplyToMessageId(null);
+      if (warning) toast({ title: "Message sent with a quoted reference", description: warning });
     }
+  };
+
+  const shareLocation = async () => {
+    if (!userLocation) {
+      toast({ title: "Location unavailable", description: "Allow location access and try again.", variant: "destructive" });
+      return;
+    }
+    const mapUrl = `https://www.google.com/maps?q=${userLocation.lat},${userLocation.lng}`;
+    const { error, warning } = await sendMessage("Shared a location", {
+      content_type: "location",
+      attachment_url: mapUrl,
+      location_name: userLocation.name,
+      location_point: `POINT(${userLocation.lng} ${userLocation.lat})`,
+      reply_to_message_id: replyToMessageId,
+    });
+    if (error) toast({ title: "Could not share location", description: error, variant: "destructive" });
+    else {
+      setReplyToMessageId(null);
+      if (warning) toast({ title: "Location shared with a quoted reference", description: warning });
+    }
+  };
+
+  const handleMediaSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      toast({ title: "Unsupported file", description: "Choose an image or video.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast({ title: "File is too large", description: "Images and videos must be 50 MB or smaller.", variant: "destructive" });
+      return;
+    }
+
+    const extension = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "media";
+    const path = `${user.id}/chat/${crypto.randomUUID()}.${extension}`;
+    setUploadingMedia(true);
+    try {
+      const { error: uploadError } = await supabase.storage.from("community-media").upload(path, file, {
+        cacheControl: "3600", contentType: file.type, upsert: false,
+      });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from("community-media").getPublicUrl(path);
+      const { error: messageError, warning } = await sendMessage("", {
+        content_type: file.type.startsWith("video/") ? "video" : "image",
+        attachment_url: publicUrl,
+        attachment_name: file.name,
+        reply_to_message_id: replyToMessageId,
+      });
+      if (messageError) {
+        await supabase.storage.from("community-media").remove([path]);
+        throw new Error(messageError);
+      }
+      setReplyToMessageId(null);
+      if (warning) toast({ title: "Media sent with a quoted reference", description: warning });
+    } catch (error: any) {
+      console.error("Media share failed:", error);
+      const message = error?.message || "Try again with a smaller image or video.";
+      toast({ title: "Could not send media", description: /bucket not found/i.test(message) ? "The community-media bucket is missing in Supabase. Apply migration 20261024020000_chat_media_links_and_pins.sql to create it." : message, variant: "destructive" });
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const shareLink = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      const url = new URL(linkInput.trim());
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("Use a link that starts with http:// or https://");
+      const { error, warning } = await sendMessage("Shared a link", { content_type: "link", attachment_url: url.toString(), reply_to_message_id: replyToMessageId });
+      if (error) throw new Error(error);
+      setLinkInput("");
+      setShowLinkInput(false);
+      setReplyToMessageId(null);
+      if (warning) toast({ title: "Link shared with a quoted reference", description: warning });
+    } catch (error: any) {
+      const message = error?.message || "Enter a valid web link.";
+      toast({ title: "Could not share link", description: /column|schema cache/i.test(message) ? "Apply migration 20261024020000_chat_media_links_and_pins.sql, then refresh the app." : message, variant: "destructive" });
+    }
+  };
+
+  const pinMessage = async (message: any) => {
+    if (!user) return;
+    setPinningMessageId(message.id);
+    const { error } = await supabase.from("community_chat_pin").upsert({
+      id: true, message_id: message.id, pinned_by: user.id, created_at: new Date().toISOString(),
+    }, { onConflict: "id" });
+    setPinningMessageId(null);
+    if (error) {
+      toast({ title: "Could not pin message", description: error.message, variant: "destructive" });
+      return;
+    }
+    setPinnedMessage({ ...message, pinned_by: user.id });
+    toast({ title: "Message pinned", description: "The pinned reference is now visible to everyone in community chat." });
+  };
+
+  const jumpToPinnedMessage = () => {
+    const messageElement = pinnedMessage && messageRefs.current[pinnedMessage.id];
+    if (messageElement) messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    else if (pinnedMessage) toast({ title: "Pinned message", description: "This reference is older than the messages currently loaded." });
   };
 
   const formatTime = (timestamp: string) => {
@@ -281,6 +456,20 @@ const Chat = () => {
       </div>
 
       {/* Messages */}
+      {pinnedMessage && (
+        <button onClick={jumpToPinnedMessage} className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full px-3 pt-3 text-left">
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950 shadow-sm">
+            <Pin className="h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold">Pinned message reference</p>
+              <p className="truncate text-xs">
+                {pinnedMessage.profiles?.full_name || pinnedMessage.profiles?.username || "Community member"}: {pinnedMessage.content_type === "image" ? "📷 Photo" : pinnedMessage.content_type === "video" ? "🎥 Video" : pinnedMessage.content_type === "location" ? `📍 ${pinnedMessage.location_name || "Location"}` : pinnedMessage.content_type === "link" ? pinnedMessage.attachment_url : pinnedMessage.message}
+              </p>
+            </div>
+            <span className="text-xs">Jump</span>
+          </div>
+        </button>
+      )}
       <div className="flex-1 max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full  px-1 sm:px-4 py-4 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -305,13 +494,21 @@ const Chat = () => {
                 const online = isOwnMessage
                   ? true
                   : isUserOnline(message.user_id);
+                const fallbackReply = parseReplyFallbackText(message.message || "");
+                const referencedMessageId = message.reply_to_message_id || fallbackReply.replyId;
+                const replyTarget = referencedMessageId
+                  ? messages.find((candidate) => candidate.id === referencedMessageId)
+                  : null;
+                const replyPreview = replyTarget ? (replyTarget.content_type === "image" ? "📷 Photo" : replyTarget.content_type === "video" ? "🎥 Video" : replyTarget.content_type === "location" ? `📍 ${replyTarget.location_name || "Location"}` : replyTarget.content_type === "link" ? replyTarget.attachment_url : replyTarget.message) : fallbackReply.quoteLabel || "Referenced message";
+                const visibleMessage = fallbackReply.body === "Shared a link" || fallbackReply.body === "Shared a location" ? "" : fallbackReply.body;
 
                 return (
                   <div
                     key={message.id}
+                    ref={(element) => { messageRefs.current[message.id] = element; }}
                     className={`flex ${
                       isOwnMessage ? "justify-end" : "justify-start"
-                    }`}
+                    } ${highlightedMessageId === message.id ? "rounded-xl bg-amber-300/30 ring-4 ring-amber-300 shadow-xl transition-all duration-300" : "transition-all duration-300"}`}
                   >
                     <div
                       className={`max-w-[80%] rounded-xl border-[0.5px] border-blue-200 backdrop-blur-sm  bg-white/10 px-4 py-3 ${
@@ -338,20 +535,45 @@ const Chat = () => {
                           </UserProfileModal>
                         </div>
                       )}
-                      <p
-                        className={`text-sm leading-relaxed   text-white p-2 `}
-                      >
-                        {message.message}
-                      </p>
-                      <div className="flex justify-end gap-4 pt-4">
-                        {!isOwnMessage && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs text-gray-500  bg-white"
-                          >
-                            {message.location_name || "No location found"}
-                          </Badge>
+                      {referencedMessageId && (
+                        <button type="button" onClick={() => void jumpToMessage(referencedMessageId)} className="mb-2 block w-full cursor-pointer border-l-2 border-amber-400 bg-black/10 px-2 py-1 text-left text-xs text-white/80 hover:bg-black/20">
+                          <span className="block font-semibold">Replying to {replyTarget?.profiles?.full_name || replyTarget?.profiles?.username || "message"}</span>
+                          <span className="block truncate">{replyPreview}</span>
+                        </button>
+                      )}
+                      {message.content_type === "image" && message.attachment_url && (
+                        <button type="button" onClick={() => setMediaPreview({ type: "image", url: message.attachment_url!, name: message.attachment_name || undefined })} className="block cursor-zoom-in">
+                          <img src={message.attachment_url} alt={message.attachment_name || "Shared image"} className="max-h-72 max-w-full rounded-lg object-contain" loading="lazy" />
+                        </button>
+                      )}
+                      {message.content_type === "video" && message.attachment_url && (
+                        <button type="button" onClick={() => setMediaPreview({ type: "video", url: message.attachment_url!, name: message.attachment_name || undefined })} className="relative block cursor-zoom-in">
+                          <video src={message.attachment_url} muted preload="metadata" className="max-h-72 max-w-full rounded-lg" aria-label={message.attachment_name || "Shared video"} />
+                          <span className="absolute inset-0 flex items-center justify-center text-3xl text-white drop-shadow">▶</span>
+                        </button>
+                      )}
+                      {message.content_type === "link" && message.attachment_url && (
+                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="my-2 block max-w-full break-all rounded-lg bg-blue-50 p-3 text-blue-700 underline">
+                          <span className="flex items-center gap-2"><LinkIcon className="h-4 w-4 shrink-0" />{message.attachment_url}</span>
+                        </a>
+                      )}
+                      {message.content_type === "location" && message.attachment_url && (
+                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="my-2 flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-emerald-800">
+                          <MapPin className="h-5 w-5 shrink-0" />
+                          <span><span className="block font-semibold">Shared location</span><span className="text-xs">{message.location_name || "Open in Maps"}</span></span>
+                        </a>
+                      )}
+                      {!!visibleMessage && (
+                        <p className="whitespace-pre-wrap break-words p-2 text-sm leading-relaxed text-white">{visibleMessage}</p>
+                      )}
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        {message.location_name && message.content_type !== "location" && !isOwnMessage && (
+                          <Badge variant="outline" className="text-xs text-gray-500 bg-white">{message.location_name}</Badge>
                         )}
+                        <button type="button" onClick={() => { setReplyToMessageId(message.id); setShowReferencePicker(false); }} className="inline-flex items-center gap-1 text-xs text-blue-100 hover:text-white">Reply</button>
+                        <button type="button" onClick={() => pinMessage(message)} disabled={pinningMessageId === message.id} className="inline-flex items-center gap-1 text-xs text-amber-200 hover:text-amber-100 disabled:opacity-50">
+                          <Pin className="h-3 w-3" />{pinnedMessage?.id === message.id ? "Pinned" : pinningMessageId === message.id ? "Pinning..." : "Pin reference"}
+                        </button>
                         <p
                           className={`text-xs mt-1
                              text-blue-100  `}
@@ -372,25 +594,58 @@ const Chat = () => {
       {/* Message Input */}
       <div className=" p-4 sticky bottom-0 border-t-[0.5px] border-blue-200 backdrop-blur-2xl  bg-white/10">
         <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto sm:px-4 px-1">
+          <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMediaSelected} />
+          {showLinkInput && (
+            <form onSubmit={shareLink} className="mb-2 flex gap-2">
+              <Input type="url" value={linkInput} onChange={(event) => setLinkInput(event.target.value)} placeholder="Paste a link (https://...)" className="text-black" />
+              <Button type="submit" size="sm" disabled={!linkInput.trim()}>Share</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setShowLinkInput(false)}>Cancel</Button>
+            </form>
+          )}
+          {showEmojiPicker && (
+            <div className="mb-2 flex flex-wrap gap-1 rounded-xl border bg-white p-2" aria-label="Emoji picker">
+              {"😀 😃 😄 😁 😊 🙂 🥰 😎 🤝 🙏 👋 👍 ❤️ 🎉 🌍 📍 🚗 🍲 🩺".split(" ").map((emoji) => (
+                <button key={emoji} type="button" className="rounded p-1 text-xl hover:bg-gray-100" onClick={() => setNewMessage((current) => `${current}${emoji}`)}>{emoji}</button>
+              ))}
+            </div>
+          )}
+          {showReferencePicker && (
+            <div className="mb-2 max-h-56 overflow-y-auto rounded-xl border border-blue-200 bg-white p-2 text-gray-900 shadow-lg">
+              <p className="px-2 pb-1 text-xs font-semibold text-gray-600">Choose a recent message to pin as the group reference</p>
+              {messages.length === 0 ? <p className="p-2 text-sm text-gray-500">There are no messages to reference yet.</p> : messages.slice(-20).reverse().map((message) => {
+                const author = message.profiles?.full_name || message.profiles?.username || "Community member";
+                const preview = message.content_type === "image" ? "📷 Photo" : message.content_type === "video" ? "🎥 Video" : message.content_type === "location" ? `📍 ${message.location_name || "Location"}` : message.content_type === "link" ? message.attachment_url : message.message;
+                return <button key={message.id} type="button" onClick={() => { void pinMessage(message); setShowReferencePicker(false); }} className="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-blue-50"><span className="font-medium">{author}:</span> {preview || "Message"}{pinnedMessage?.id === message.id ? " · Current reference" : ""}</button>;
+              })}
+            </div>
+          )}
+          {replyToMessageId && (() => {
+            const target = messages.find((item) => item.id === replyToMessageId);
+            const preview = !target ? "Referenced message" : target.content_type === "image" ? "📷 Photo" : target.content_type === "video" ? "🎥 Video" : target.content_type === "location" ? `📍 ${target.location_name || "Location"}` : target.content_type === "link" ? target.attachment_url : target.message;
+            return <div className="mb-2 flex items-center gap-2 rounded-lg border-l-4 border-amber-400 bg-white/15 px-3 py-2 text-sm text-white"><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Replying to {target?.profiles?.full_name || target?.profiles?.username || "message"}</p><p className="truncate text-xs">{preview}</p></div><button type="button" aria-label="Cancel reply" onClick={() => setReplyToMessageId(null)} className="px-2 text-lg">×</button></div>;
+          })()}
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "image/*"; fileInputRef.current.click(); } }} disabled={uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><ImageIcon className="h-4 w-4" /><span>Image</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "video/*"; fileInputRef.current.click(); } }} disabled={uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><Video className="h-4 w-4" /><span>Video</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={shareLocation} className="h-9 gap-1 px-2 text-xs text-white"><MapPin className="h-4 w-4" /><span>Location</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowLinkInput((current) => !current)} className="h-9 gap-1 px-2 text-xs text-white"><LinkIcon className="h-4 w-4" /><span>Link</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowEmojiPicker((current) => !current)} className="h-9 gap-1 px-2 text-xs text-white"><Smile className="h-4 w-4" /><span>Emoji</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowReferencePicker((current) => !current)} className="h-9 gap-1 border border-amber-200/70 px-2 text-xs text-white"><Pin className="h-4 w-4" /><span>Reference</span></Button>
+            {uploadingMedia && <span className="text-xs text-white">Uploading…</span>}
+          </div>
           <form onSubmit={handleSendMessage} className="flex space-x-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1 rounded-full border-gray-300 text-black focus:border-blue-500 focus:ring-blue-500"
-              maxLength={200}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!newMessage.trim()}
-              className="rounded-full border-[0.5px] border-blue-200 shadow-white/15 h-10 w-10 p-0 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type your message..." className="flex-1 rounded-full border-gray-300 text-black focus:border-blue-500 focus:ring-blue-500" maxLength={1000} />
+            <Button type="submit" size="sm" disabled={!newMessage.trim()} className="rounded-full border-[0.5px] border-blue-200 shadow-white/15 h-10 w-10 p-0 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"><Send className="h-4 w-4" /></Button>
           </form>
         </div>
       </div>
+      <Dialog open={!!mediaPreview} onOpenChange={(open) => { if (!open) setMediaPreview(null); }}>
+        <DialogContent className="max-w-5xl border-white/20 bg-slate-950 p-3">
+          <DialogHeader><DialogTitle className="text-white">{mediaPreview?.name || (mediaPreview?.type === "video" ? "Shared video" : "Shared image")}</DialogTitle></DialogHeader>
+          {mediaPreview?.type === "image" && <img src={mediaPreview.url} alt={mediaPreview.name || "Shared image"} className="mx-auto max-h-[70vh] max-w-full rounded-lg object-contain" />}
+          {mediaPreview?.type === "video" && <video src={mediaPreview.url} controls autoPlay playsInline className="mx-auto max-h-[70vh] max-w-full rounded-lg" />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

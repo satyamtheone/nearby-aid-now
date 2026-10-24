@@ -17,6 +17,7 @@ export type Database = {
       help_requests: {
         Row: {
           category: Database["public"]["Enums"]["help_category"]
+          closed_without_helper: boolean
           created_at: string | null
           id: string
           is_resolved: boolean | null
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           category: Database["public"]["Enums"]["help_category"]
+          closed_without_helper?: boolean
           created_at?: string | null
           id?: string
           is_resolved?: boolean | null
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           category?: Database["public"]["Enums"]["help_category"]
+          closed_without_helper?: boolean
           created_at?: string | null
           id?: string
           is_resolved?: boolean | null
@@ -63,30 +66,42 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_name: string | null
+          attachment_url: string | null
           created_at: string | null
+          content_type: string
           help_request_id: string | null
           id: string
           location_name: string | null
           location_point: unknown | null
           message: string
+          reply_to_message_id: string | null
           user_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           created_at?: string | null
+          content_type?: string
           help_request_id?: string | null
           id?: string
           location_name?: string | null
           location_point?: unknown | null
           message: string
+          reply_to_message_id?: string | null
           user_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           created_at?: string | null
+          content_type?: string
           help_request_id?: string | null
           id?: string
           location_name?: string | null
           location_point?: unknown | null
           message?: string
+          reply_to_message_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -163,6 +178,42 @@ export type Database = {
           status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string | null
           username?: string | null
+        }
+        Relationships: []
+      }
+      community_chat_pin: {
+        Row: { id: boolean; message_id: string; pinned_by: string; created_at: string }
+        Insert: { id?: boolean; message_id: string; pinned_by: string; created_at?: string }
+        Update: { id?: boolean; message_id?: string; pinned_by?: string; created_at?: string }
+        Relationships: []
+      }
+      request_feedback: {
+        Row: {
+          id: string
+          request_id: string
+          requester_id: string
+          helper_id: string
+          rating: number
+          feedback: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          requester_id: string
+          helper_id: string
+          rating: number
+          feedback: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          requester_id?: string
+          helper_id?: string
+          rating?: number
+          feedback?: string
+          created_at?: string
         }
         Relationships: []
       }
@@ -729,6 +780,16 @@ export type Database = {
           current_user_lng: number
         }
         Returns: number
+      }
+      fulfill_help_request: {
+        Args: {
+          p_request_id: string
+          p_helper_id: string | null
+          p_rating: number | null
+          p_feedback: string | null
+          p_confirm_no_helpers: boolean
+        }
+        Returns: boolean
       }
       get_nearby_help_requests: {
         Args: { user_lat: number; user_lng: number; radius_km?: number }

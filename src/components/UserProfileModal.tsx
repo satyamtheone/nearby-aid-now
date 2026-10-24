@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import UserFeedback from "@/components/UserFeedback";
 
 interface UserProfile {
   id: string;
@@ -39,6 +40,7 @@ interface UserProfile {
   last_seen: string | null;
   social_links: any;
   avatar_emoji: string | null;
+  avatar_url: string | null;
 }
 
 interface UserProfileModalProps {
@@ -131,7 +133,9 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <CardContent className="pt-6">
                 <div className="text-center">
                   <div className="flex items-center justify-center space-x-3 mb-3">
-                    {profile?.avatar_emoji ? (
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Profile" className="h-12 w-12 rounded-full object-cover" />
+                    ) : profile?.avatar_emoji ? (
                       <span className="text-2xl">{profile.avatar_emoji}</span>
                     ) : (
                       <div
@@ -227,6 +231,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </CardContent>
               </Card>
             )}
+
+            {profile && <UserFeedback userId={profile.id} />}
 
             {/* Social Links */}
             {profile &&
