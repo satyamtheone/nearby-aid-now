@@ -8,6 +8,7 @@ type HelpRequest = Database['public']['Tables']['help_requests']['Row'] & {
   profiles: {
     username: string | null;
     full_name: string | null;
+    avatar_url?: string | null;
   };
   distance_km?: number;
 };
@@ -38,7 +39,8 @@ export function useHelpRequests() {
           ...request,
           profiles: {
             username: null,
-            full_name: null
+            full_name: null,
+            avatar_url: null,
           },
           distance_km: request.distance_km
         })) || [];
@@ -48,13 +50,13 @@ export function useHelpRequests() {
           transformedData.map(async (request) => {
             const { data: profile } = await supabase
               .from('profiles')
-              .select('username, full_name')
+              .select('username, full_name, avatar_url')
               .eq('id', request.user_id)
               .single();
 
             return {
               ...request,
-              profiles: profile || { username: null, full_name: null }
+              profiles: profile || { username: null, full_name: null, avatar_url: null }
             };
           })
         );
@@ -68,7 +70,8 @@ export function useHelpRequests() {
             *,
             profiles (
               username,
-              full_name
+              full_name,
+              avatar_url
             )
           `)
           .eq('is_resolved', false)

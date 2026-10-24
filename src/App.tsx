@@ -14,6 +14,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
 import { WebPushManager } from "@/components/WebPushManager";
 import { MobileDock } from "@/components/MobileDock";
+import { ProfileCompletionPrompt } from "@/components/ProfileCompletionPrompt";
 import { MotionConfig } from "framer-motion";
 const Home = lazy(() => import("./pages/Home"));
 const AskHelp = lazy(() => import("./pages/AskHelp"));
@@ -80,6 +81,7 @@ const App = () => (
           <PushNotificationManager />
           <WebPushManager />
           <MobileDock />
+          <ProfileCompletionPrompt />
           <Suspense
             fallback={
               <div className="safe-area-top flex min-h-dvh items-center justify-center bg-gradient-to-br from-teal-400 via-purple-400 to-blue-500 text-white">

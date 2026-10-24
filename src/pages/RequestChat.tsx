@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useRequestMessages } from "@/hooks/useRequestMessages";
 import { formatTime, formatChatTime } from "@/utils/timeUtils";
 import { toast } from "@/hooks/use-toast";
@@ -87,16 +88,30 @@ const RequestChat = () => {
     null
   );
   const { user, userLocation } = useAuth();
+  const { loading: profileStatusLoading, isComplete: profileComplete } = useProfileCompletion();
+  const canSendMessages = !profileStatusLoading && profileComplete === true;
   const { messages, loading, sendMessage, fetchMessageById } =
     useRequestMessages(requestId || null);
   const [requestLoading, setRequestLoading] = useState(true);
+
+  const ensureProfileCanMessage = () => {
+    if (canSendMessages) return true;
+    toast({
+      title: profileComplete === null ? "Could not verify your profile" : "Complete your profile to message",
+      description: profileComplete === null
+        ? "Please try again in a moment."
+        : "Add your legal name, mobile number, address, and Instagram or Facebook profile. You can update these in Profile.",
+      variant: "destructive",
+    });
+    return false;
+  };
 
   useEffect(() => {
     if (!requestId) return;
     let active = true;
     supabase
       .from("help_requests")
-      .select("*, profiles(username, full_name)")
+      .select("*, profiles(username, full_name, avatar_url)")
       .eq("id", requestId)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -327,6 +342,7 @@ const RequestChat = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ensureProfileCanMessage()) return;
     if (!newMessage.trim()) return;
 
     const messageText = newMessage.trim();
@@ -357,6 +373,7 @@ const RequestChat = () => {
   ) => {
     const file = event.target.files?.[0];
     event.target.value = "";
+    if (!ensureProfileCanMessage()) return;
     if (!file || !user) return;
     if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
       toast({
@@ -426,6 +443,7 @@ const RequestChat = () => {
 
   const shareLink = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!ensureProfileCanMessage()) return;
     try {
       const url = new URL(linkInput.trim());
       if (!["http:", "https:"].includes(url.protocol))
@@ -457,6 +475,7 @@ const RequestChat = () => {
   };
 
   const shareLocation = async () => {
+    if (!ensureProfileCanMessage()) return;
     if (!userLocation) {
       toast({
         title: "Location unavailable",
@@ -607,11 +626,13 @@ const RequestChat = () => {
                     isOnline={userOnlineStatus[currentRequest.user_id] || false}
                     distance={userDistances[currentRequest.user_id]}
                   >
-                    <button className="capitalize font-bold  text-[14px] text-blue-600 transition-colors">
-                      by{" "}
-                      {currentRequest.profiles?.full_name.slice(0, 10) ||
-                        currentRequest.profiles?.username.slice(0, 10) ||
-                        "Anonymous"}
+                    <button className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-2 py-1 font-bold capitalize text-[13px] text-blue-600 transition-colors">
+                      {currentRequest.profiles?.avatar_url ? (
+                        <img src={currentRequest.profiles.avatar_url} alt="" className="h-7 w-7 rounded-full border border-white/40 object-cover" />
+                      ) : (
+                        <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">{(currentRequest.profiles?.full_name || currentRequest.profiles?.username || "A").charAt(0).toUpperCase()}</span>
+                      )}
+                      <span>by {currentRequest.profiles?.full_name || currentRequest.profiles?.username || "Anonymous"}</span>
                       {userOnlineStatus[currentRequest.user_id] && (
                         <span className="ml-2 text-green-600">●</span>
                       )}
@@ -899,6 +920,12 @@ const RequestChat = () => {
               className="hidden"
               onChange={handleMediaSelected}
             />
+            {!canSendMessages && (
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-100/25 bg-amber-100/10 px-3 py-2 text-xs text-white/85" role="status">
+                <span>{profileStatusLoading ? "Checking profile…" : profileComplete === null ? "Profile status is unavailable; messaging is paused." : "Complete your profile to send messages and build trust."}</span>
+                {!profileStatusLoading && <Button type="button" size="sm" variant="secondary" className="h-8 text-xs text-white" onClick={() => navigate("/profile")}>Complete profile</Button>}
+              </div>
+            )}
             {replyToMessageId &&
               (() => {
                 const target = messages.find(
@@ -943,10 +970,11 @@ const RequestChat = () => {
                   type="url"
                   value={linkInput}
                   onChange={(event) => setLinkInput(event.target.value)}
+                  disabled={!canSendMessages}
                   placeholder="Paste a link (https://...)"
                   className="text-black"
                 />
-                <Button type="submit" size="sm" disabled={!linkInput.trim()}>
+                <Button type="submit" size="sm" disabled={!canSendMessages || !linkInput.trim()}>
                   Share link
                 </Button>
                 <Button
@@ -991,7 +1019,7 @@ const RequestChat = () => {
                     fileInputRef.current.click();
                   }
                 }}
-                disabled={uploadingMedia}
+                disabled={!canSendMessages || uploadingMedia}
                 className="h-9 gap-1 px-2 text-xs text-white"
               >
                 <ImageIcon className="h-4 w-4" />
@@ -1007,7 +1035,7 @@ const RequestChat = () => {
                     fileInputRef.current.click();
                   }
                 }}
-                disabled={uploadingMedia}
+                disabled={!canSendMessages || uploadingMedia}
                 className="h-9 gap-1 px-2 text-xs text-white"
               >
                 <Video className="h-4 w-4" />
@@ -1018,6 +1046,7 @@ const RequestChat = () => {
                 size="sm"
                 variant="ghost"
                 onClick={shareLocation}
+                disabled={!canSendMessages}
                 className="h-9 gap-1 px-2 text-xs text-white"
               >
                 <MapPin className="h-4 w-4" />
@@ -1028,6 +1057,7 @@ const RequestChat = () => {
                 size="sm"
                 variant="ghost"
                 onClick={() => setShowLinkInput((current) => !current)}
+                disabled={!canSendMessages}
                 className="h-9 gap-1 px-2 text-xs text-white"
               >
                 <LinkIcon className="h-4 w-4" />
@@ -1038,6 +1068,7 @@ const RequestChat = () => {
                 size="sm"
                 variant="ghost"
                 onClick={() => setShowEmojiPicker((current) => !current)}
+                disabled={!canSendMessages}
                 className="h-9 gap-1 px-2 text-xs text-white"
               >
                 <Smile className="h-4 w-4" />
@@ -1051,14 +1082,15 @@ const RequestChat = () => {
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
+                disabled={!canSendMessages}
+                placeholder={canSendMessages ? "Type your message..." : "Complete your profile to message"}
                 className="flex-1 rounded-full focus:border-white focus:ring-white"
                 maxLength={200}
               />
               <Button
                 type="submit"
                 size="sm"
-                disabled={!newMessage.trim()}
+                disabled={!canSendMessages || !newMessage.trim()}
                 className={`rounded-full h-10 w-10 p-0 bg-gradient-to-r from-blue-600 to-teal-600 border-2 hover:from-blue-700 hover:to-teal-700 ${
                   !newMessage.trim() ? "border-gray-400" : " border-white"
                 }`}

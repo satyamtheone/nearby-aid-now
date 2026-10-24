@@ -115,24 +115,24 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-md mx-auto">
+      <DialogContent className="user-profile-modal mx-auto max-w-xl rounded-[1.75rem] border-white/25 bg-[#303b91]/92 p-4 text-white shadow-2xl backdrop-blur-3xl sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <UserCircle className="h-5 w-5 text-white" />
-            <span className=" text-white">User Profile</span>
+            <UserCircle className="h-5 w-5 text-cyan-100" />
+            <span className="text-white">Community profile</span>
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
           <div className="space-y-4 py-2">
-            <Card>
+            <Card className="user-profile-card">
               <CardContent className="flex flex-col items-center gap-3 pt-6">
                 <Skeleton className="h-12 w-12 rounded-full" />
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-3 w-24" />
               </CardContent>
             </Card>
-            <Card>
+            <Card className="user-profile-card">
               <CardHeader><Skeleton className="h-4 w-32" /></CardHeader>
               <CardContent className="space-y-3">
                 <Skeleton className="h-3 w-full" />
@@ -143,22 +143,22 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
         ) : (
           <div className="space-y-4">
             {/* Status and Basic Info */}
-            <Card>
+            <Card className="user-profile-card">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="flex items-center justify-center space-x-3 mb-3">
+                  <div className="mb-3 flex flex-col items-center justify-center gap-3">
                     {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="Profile" className="h-12 w-12 rounded-full object-cover" />
+                      <img src={profile.avatar_url} alt={`${profile.full_name || profile.username || userName}'s profile`} className="h-24 w-24 rounded-full border-2 border-white/70 object-cover shadow-xl ring-4 ring-cyan-100/15" />
                     ) : profile?.avatar_emoji ? (
-                      <span className="text-2xl">{profile.avatar_emoji}</span>
+                      <div className="grid h-24 w-24 place-items-center rounded-full border-2 border-white/45 bg-white/10 text-4xl shadow-xl">{profile.avatar_emoji}</div>
                     ) : (
                       <div
-                        className={`w-4 h-4 rounded-full ${
+                        className={`grid h-20 w-20 place-items-center rounded-full border-2 border-white/45 text-3xl font-semibold text-white shadow-xl ${
                           isOnline ? "bg-green-500" : "bg-gray-400"
                         }`}
-                      ></div>
+                      >{(profile?.full_name || profile?.username || userName || "U").charAt(0).toUpperCase()}</div>
                     )}
-                    <h3 className="text-lg font-semibold capitalize">
+                    <h3 className="text-center text-xl font-semibold capitalize text-white">
                       {profile?.full_name ||
                         profile?.username ||
                         userName ||
@@ -184,7 +184,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </div>
 
                   {!isOnline && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-white/65">
                       Last seen: {formatLastSeen(profile?.last_seen)}
                     </p>
                   )}
@@ -194,30 +194,30 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
             {/* Personal Information */}
             {profile && (
-              <Card>
+              <Card className="user-profile-card">
                 <CardHeader>
-                  <CardTitle className="text-sm">
+                  <CardTitle className="text-sm text-white">
                     Personal Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {profile.username && (
                     <div className="flex items-center space-x-3">
-                      <User className="h-4 w-4 text-gray-500" />
+                      <User className="h-4 w-4 text-white/60" />
                       <span className="text-sm">@{profile.username}</span>
                     </div>
                   )}
 
                   {profile.age && (
                     <div className="flex items-center space-x-3">
-                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <Calendar className="h-4 w-4 text-white/60" />
                       <span className="text-sm">{profile.age} years old</span>
                     </div>
                   )}
 
                   {profile.gender && (
                     <div className="flex items-center space-x-3">
-                      <UserCircle className="h-4 w-4 text-gray-500" />
+                      <UserCircle className="h-4 w-4 text-white/60" />
                       <span className="text-sm">
                         {getGenderDisplay(profile.gender)}
                       </span>
@@ -226,10 +226,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                   {profile.phone && (
                     <div className="flex items-center space-x-3">
-                      <Phone className="h-4 w-4 text-gray-500" />
+                      <Phone className="h-4 w-4 text-white/60" />
                       <a
                         href={`tel:${profile.phone}`}
-                        className="text-sm text-blue-600 hover:underline"
+                        className="text-sm text-cyan-100 hover:text-white hover:underline"
                       >
                         {profile.phone}
                       </a>
@@ -238,7 +238,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                   {profile.location_name && (
                     <div className="flex items-center space-x-3">
-                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <MapPin className="h-4 w-4 text-white/60" />
                       <span className="text-sm">{profile.location_name}</span>
                     </div>
                   )}
@@ -252,9 +252,9 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
             {profile &&
               profile.social_links &&
               Object.values(profile.social_links).some((link: any) => link) && (
-                <Card>
+                <Card className="user-profile-card">
                   <CardHeader>
-                    <CardTitle className="text-sm">Social Links</CardTitle>
+                    <CardTitle className="text-sm text-white">Social Links</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {profile.social_links.instagram && (
@@ -266,7 +266,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-3 text-sm text-blue-600 hover:text-blue-800"
+                        className="flex items-center space-x-3 text-sm text-cyan-100 hover:text-white"
                       >
                         <Instagram className="h-4 w-4" />
                         <span>Instagram</span>
@@ -282,7 +282,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-3 text-sm text-blue-600 hover:text-blue-800"
+                        className="flex items-center space-x-3 text-sm text-cyan-100 hover:text-white"
                       >
                         <Facebook className="h-4 w-4" />
                         <span>Facebook</span>
@@ -298,7 +298,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-3 text-sm text-blue-600 hover:text-blue-800"
+                        className="flex items-center space-x-3 text-sm text-cyan-100 hover:text-white"
                       >
                         <Linkedin className="h-4 w-4" />
                         <span>LinkedIn</span>
@@ -314,7 +314,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-3 text-sm text-blue-600 hover:text-blue-800"
+                        className="flex items-center space-x-3 text-sm text-cyan-100 hover:text-white"
                       >
                         <Twitter className="h-4 w-4" />
                         <span>Twitter</span>
@@ -330,7 +330,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-3 text-sm text-blue-600 hover:text-blue-800"
+                        className="flex items-center space-x-3 text-sm text-cyan-100 hover:text-white"
                       >
                         <ExternalLink className="h-4 w-4" />
                         <span>Other Link</span>
@@ -343,20 +343,20 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
             {/* Address Information */}
             {profile && (profile.home_address || profile.current_address) && (
-              <Card>
+              <Card className="user-profile-card">
                 <CardHeader>
-                  <CardTitle className="text-sm">Address Information</CardTitle>
+                    <CardTitle className="text-sm text-white">Address Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {profile.home_address && (
                     <div>
                       <div className="flex items-center space-x-2 mb-1">
-                        <Home className="h-4 w-4 text-gray-500" />
+                        <Home className="h-4 w-4 text-white/60" />
                         <span className="text-sm font-medium">
                           Home Address
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 ml-6">
+                      <p className="ml-6 text-sm text-white/75">
                         {profile.home_address}
                       </p>
                     </div>
@@ -365,12 +365,12 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   {profile.current_address && (
                     <div>
                       <div className="flex items-center space-x-2 mb-1">
-                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <MapPin className="h-4 w-4 text-white/60" />
                         <span className="text-sm font-medium">
                           Current Address
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 ml-6">
+                      <p className="ml-6 text-sm text-white/75">
                         {profile.current_address}
                       </p>
                     </div>
@@ -386,9 +386,9 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
               !profile.phone &&
               !profile.home_address &&
               !profile.current_address && (
-                <Card>
+                <Card className="user-profile-card">
                   <CardContent className="pt-6 text-center">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-white/65">
                       This user hasn't filled out their profile yet.
                     </p>
                   </CardContent>

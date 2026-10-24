@@ -18,7 +18,12 @@ interface AuthContextType {
   signUp: (
     email: string,
     password: string,
-    fullName?: string
+    fullName?: string,
+    profileDetails?: {
+      phone: string;
+      homeAddress: string;
+      socialLinks: { instagram: string; facebook: string };
+    }
   ) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
@@ -131,9 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const updateData: any = {
         id: user.id,
-        full_name: user.user_metadata?.full_name || user.email || "Anonymous",
-        username:
-          user.user_metadata?.username || user.email?.split("@")[0] || "user",
         location_name: locationName,
         location_point: `POINT(${lng} ${lat})`,
         last_seen: new Date().toISOString(),
@@ -311,7 +313,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName?: string,
+    profileDetails?: {
+      phone: string;
+      homeAddress: string;
+      socialLinks: { instagram: string; facebook: string };
+    },
+  ) => {
     const redirectUrl = Capacitor.isNativePlatform()
       ? "com.nearbyaidnow.app://auth"
       : `${window.location.origin}/`;
@@ -323,6 +334,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          phone: profileDetails?.phone,
+          home_address: profileDetails?.homeAddress,
+          social_links: profileDetails?.socialLinks || {},
         },
       },
     });

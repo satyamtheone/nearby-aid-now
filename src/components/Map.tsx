@@ -18,17 +18,19 @@ interface OnlineUser {
   distance_km: number;
   is_online: boolean;
   avatar_emoji: string;
+  avatar_url?: string | null;
 }
 
 // Custom marker icons
-const createCustomIcon = (isOnline: boolean, avatarEmoji?: string | null) => {
+const createCustomIcon = (isOnline: boolean, avatarEmoji?: string | null, avatarUrl?: string | null) => {
   const emoji = avatarEmoji || (isOnline ? "🟢" : "⚪");
+  const safeAvatarUrl = avatarUrl?.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return L.divIcon({
     className: "custom-user-marker",
     html: `
       <div class="marker-wrapper ${isOnline ? "online" : "offline"}">
         <div class="marker-pulse ${isOnline ? "online" : ""}"></div>
-        <div class="marker-emoji">${emoji}</div>
+        ${safeAvatarUrl ? `<img class="marker-profile-image" src="${safeAvatarUrl}" alt="" />` : `<div class="marker-emoji">${emoji}</div>`}
       </div>
     `,
     iconSize: [40, 40],
@@ -90,6 +92,15 @@ const Map = () => {
         font-size: 20px;
         line-height: 1;
         filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+      }
+      .marker-profile-image {
+        position: relative;
+        width: 32px;
+        height: 32px;
+        object-fit: cover;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(17, 24, 65, 0.5);
       }
       .current-user-marker {
         position: relative;
@@ -180,8 +191,13 @@ const Map = () => {
 
       const users = (data as OnlineUser[]) || [];
       console.log("Map: Fetched users:", users);
-
-      setAllNearbyUsers(users);
+      const userIds = users.map((nearbyUser) => nearbyUser.user_id);
+      const { data: avatarProfiles, error: avatarError } = userIds.length
+        ? await supabase.from("profiles").select("id, avatar_url").in("id", userIds)
+        : { data: [], error: null };
+      if (avatarError) console.warn("Map: Could not load profile pictures:", avatarError);
+      const avatarByUserId = new globalThis.Map((avatarProfiles || []).map((profile) => [profile.id, profile.avatar_url]));
+      setAllNearbyUsers(users.map((nearbyUser) => ({ ...nearbyUser, avatar_url: avatarByUserId.get(nearbyUser.user_id) || null })));
       setMapError(null);
     } catch (error) {
       console.error("Map: Error fetching nearby users:", error);
@@ -293,6 +309,7 @@ const Map = () => {
         lng,
         is_online,
         avatar_emoji,
+        avatar_url,
         full_name,
         username,
         location_name,
@@ -329,11 +346,11 @@ const Map = () => {
 
       if (existingMarker) {
         existingMarker.setLatLng([lat, lng]);
-        existingMarker.setIcon(createCustomIcon(is_online, avatar_emoji));
+        existingMarker.setIcon(createCustomIcon(is_online, avatar_emoji, avatar_url));
         existingMarker.setPopupContent(popupContent);
       } else {
         const marker = L.marker([lat, lng], {
-          icon: createCustomIcon(is_online, avatar_emoji),
+          icon: createCustomIcon(is_online, avatar_emoji, avatar_url),
         }).addTo(mapRef.current!);
 
         marker.bindPopup(popupContent);
@@ -344,11 +361,11 @@ const Map = () => {
 
   if (!userLocation) {
     return (
-      <Card>
+      <Card className="glass-panel rounded-3xl text-white">
         <CardContent className="p-6 text-center">
           <div className="flex items-center justify-center space-x-2">
-            <Loader2 className="loading-spinner h-5 w-5 text-blue-600" />
-            <p className="text-gray-500">Getting your location...</p>
+            <Loader2 className="loading-spinner h-5 w-5 text-cyan-100" />
+            <p className="text-white/75">Getting your location...</p>
           </div>
         </CardContent>
       </Card>
@@ -358,20 +375,20 @@ const Map = () => {
   const onlineUsers = allNearbyUsers.filter((u) => u.is_online);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="glass-panel overflow-hidden rounded-3xl border-white/20 text-white">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <MapPin className="h-5 w-5 text-blue-600" />
-            <span className="text-gray-900">Live Users Map</span>
+            <MapPin className="h-5 w-5 text-cyan-100" />
+            <span className="text-white">Live users map</span>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-1 text-green-600">
+            <div className="flex items-center space-x-1 text-emerald-200">
               <Users className="h-4 w-4" />
               <span className="text-sm font-medium">{onlineUsers.length}</span>
               <span className="text-xs">online</span>
             </div>
-            <div className="flex items-center space-x-1 text-gray-600">
+            <div className="flex items-center space-x-1 text-white/65">
               <span className="text-sm font-medium">
                 {allNearbyUsers.length}
               </span>
@@ -380,15 +397,15 @@ const Map = () => {
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {/* Interactive Leaflet Map */}
-        <div className="w-full h-72 rounded-lg border overflow-hidden relative bg-blue-50 mb-4">
+        <div className="relative h-[min(48vh,28rem)] min-h-64 w-full overflow-hidden rounded-2xl border border-white/25 bg-blue-50 shadow-xl shadow-blue-950/20">
           <div ref={mapContainerRef} className="w-full h-full z-0" />
           {!isLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-[500]">
+            <div className="absolute inset-0 z-[500] flex items-center justify-center bg-slate-950/55 text-white backdrop-blur-sm">
               <div className="text-center">
-                <Loader2 className="loading-spinner mx-auto mb-2 h-8 w-8 text-blue-600" />
-                <p className="text-gray-500 text-sm">Loading map...</p>
+                <Loader2 className="loading-spinner mx-auto mb-2 h-8 w-8 text-cyan-100" />
+                <p className="text-sm text-white/75">Loading map...</p>
               </div>
             </div>
           )}
@@ -415,13 +432,13 @@ const Map = () => {
         </div>
 
         <div className="space-y-3">
-          <h4 className="font-medium text-sm text-gray-900">
+          <h4 className="text-sm font-semibold text-white">
             Users Nearby (10km radius):
           </h4>
           {allNearbyUsers.length === 0 ? (
-            <p className="text-sm text-gray-500">No other users nearby</p>
+            <p className="rounded-xl border border-white/15 bg-white/5 p-4 text-sm text-white/65">No other users nearby</p>
           ) : (
-            <div className="max-h-56 overflow-y-auto">
+            <div className="max-h-[42vh] space-y-2 overflow-y-auto pr-1">
               {allNearbyUsers
                 .sort((a, b) =>
                   b.is_online === a.is_online ? 0 : b.is_online ? 1 : -1
@@ -438,15 +455,17 @@ const Map = () => {
                     isOnline={nearbyUser.is_online}
                     distance={nearbyUser.distance_km}
                   >
-                    <div className="flex items-center space-x-3 p-2 my-2 neuromorphic hover:bg-gray-100 cursor-pointer transition-colors">
+                    <div className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.12)] transition-colors hover:border-white/30 hover:bg-white/15">
                       <div className="relative">
-                        {nearbyUser.avatar_emoji ? (
-                          <div className="h-8 w-8 flex items-center justify-center text-lg rounded-full border">
+                        {nearbyUser.avatar_url ? (
+                          <img src={nearbyUser.avatar_url} alt={`${nearbyUser.full_name || nearbyUser.username || "Community member"}'s profile`} className="h-10 w-10 rounded-full border border-white/30 object-cover shadow-md" loading="lazy" />
+                        ) : nearbyUser.avatar_emoji ? (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/10 text-lg">
                             {nearbyUser.avatar_emoji}
                           </div>
                         ) : (
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs">
+                          <Avatar className="h-10 w-10 border border-white/25">
+                            <AvatarFallback className="bg-white/15 text-xs text-white">
                               {(nearbyUser.full_name || "U")
                                 .charAt(0)
                                 .toUpperCase()}
@@ -462,13 +481,13 @@ const Map = () => {
                         ></div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="truncate text-sm font-semibold text-white">
                           {nearbyUser.full_name || "Unknown User"}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="truncate text-xs text-white/70">
                           at {nearbyUser.location_name || "Unknown location"}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-white/55">
                           {isNaN(nearbyUser.distance_km)
                             ? "Distance unknown"
                             : `${nearbyUser.distance_km.toFixed(1)} km away`}
@@ -478,8 +497,8 @@ const Map = () => {
                         <span
                           className={`text-xs font-medium ${
                             nearbyUser.is_online
-                              ? "text-green-600"
-                              : "text-gray-500"
+                              ? "text-emerald-200"
+                              : "text-white/55"
                           }`}
                         >
                           {nearbyUser.is_online ? "Online" : "Offline"}

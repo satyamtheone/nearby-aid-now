@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   MapPin,
@@ -18,6 +18,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useHelpRequests } from "@/hooks/useHelpRequests";
 import { formatTime } from "@/utils/timeUtils";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 const Map = lazy(() => import("@/components/Map"));
 
 const Home = () => {
@@ -25,7 +33,21 @@ const Home = () => {
   const { user, signOut, userLocation, locationLoading, nearbyUsersCount } = useAuth();
   const { helpRequests, loading, showAllLocations, toggleLocationFilter } =
     useHelpRequests();
-  const [showMap, setShowMap] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!user?.id) {
+      setProfileAvatarUrl(null);
+      return;
+    }
+    supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle()
+      .then(({ data, error }) => {
+        if (active && !error) setProfileAvatarUrl(data?.avatar_url || null);
+      });
+    return () => { active = false; };
+  }, [user?.id]);
 
   const getCategoryColor = (category: string) => {
     const colors = {
@@ -91,7 +113,11 @@ const Home = () => {
               {nearbyUsersCount} nearby
             </div>
             <Button type="button" variant="ghost" size="icon" aria-label="Open profile" onClick={() => navigate("/profile")} className="h-10 w-10 rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20">
-              <span className="text-sm font-bold">{getUserDisplayName().slice(0, 1).toUpperCase()}</span>
+              {profileAvatarUrl ? (
+                <img src={profileAvatarUrl} alt="Your profile" className="h-full w-full rounded-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold">{getUserDisplayName().slice(0, 1).toUpperCase()}</span>
+              )}
             </Button>
             <Button type="button" variant="ghost" size="icon" aria-label="Sign out" onClick={handleSignOut} className="h-10 w-10 rounded-full text-white/75 hover:bg-white/10 hover:text-white">
               <LogOut className="h-4 w-4" />
@@ -100,25 +126,25 @@ const Home = () => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 pb-32 pt-5 sm:px-6 sm:pb-12 sm:pt-8">
+      <main className="mx-auto max-w-5xl space-y-5 px-4 pb-32 pt-4 sm:px-6 sm:pb-12 sm:pt-6">
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.2, 0.75, 0.25, 1] }}
-          className="glass-panel relative isolate overflow-hidden rounded-[2rem] p-5 sm:p-8 lg:p-10"
+          className="glass-panel relative isolate overflow-hidden rounded-[1.75rem] p-4 sm:p-6 lg:p-7"
         >
           <div className="pointer-events-none absolute -right-10 -top-20 -z-10 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
           <div className="pointer-events-none absolute bottom-[-7rem] right-[24%] -z-10 h-56 w-56 rounded-full bg-fuchsia-300/20 blur-3xl" />
-          <div className="grid items-center gap-6 md:grid-cols-[1fr_auto] md:gap-10">
-            <div className="max-w-2xl">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
+          <div className="grid items-center gap-4 md:grid-cols-[1fr_auto] md:gap-7">
+            <div className="max-w-3xl">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
                 <Sparkles className="h-3.5 w-3.5 text-amber-200" /> Local care, made easier
               </div>
               <p className="mb-2 text-sm font-medium text-white/70">Welcome back, {getUserDisplayName().split("@")[0]}</p>
-              <h1 className="text-balance text-3xl font-semibold leading-[1.08] tracking-tight sm:text-4xl lg:text-5xl">Good neighbors make <span className="text-cyan-100">stronger</span> communities.</h1>
-              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">Ask for a hand, offer what you can, and find support from people close by.</p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <Button onClick={() => navigate("/ask-help")} className="h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-teal-500 px-5 text-white shadow-lg shadow-blue-950/20 hover:from-blue-400 hover:to-teal-400">
+              <h1 className="text-balance text-2xl font-semibold leading-[1.1] tracking-tight sm:text-3xl lg:text-4xl">Good neighbors make <span className="text-cyan-100">stronger</span> communities.</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/75 sm:text-[15px]">Ask for a hand, offer what you can, and find support from people close by.</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                <Button onClick={() => navigate("/ask-help")} className="h-11 rounded-xl bg-gradient-to-r from-blue-500 to-teal-500 px-4 text-white shadow-lg shadow-blue-950/20 hover:from-blue-400 hover:to-teal-400">
                   <MessageCircle className="mr-2 h-4 w-4" /> Ask for help
                 </Button>
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/85 sm:hidden">
@@ -130,10 +156,10 @@ const Home = () => {
               aria-hidden="true"
               animate={{ y: [0, -7, 0], rotate: [0, 1.5, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              className="mx-auto hidden h-40 w-40 items-center justify-center rounded-[2.5rem] border border-white/25 bg-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_24px_60px_rgb(34_47_120/0.2)] md:flex lg:h-48 lg:w-48"
+              className="mx-auto hidden h-32 w-32 items-center justify-center rounded-[2rem] border border-white/25 bg-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_24px_60px_rgb(34_47_120/0.2)] md:flex lg:h-36 lg:w-36"
             >
-              <div className="grid h-24 w-24 place-items-center rounded-full border border-white/40 bg-gradient-to-br from-cyan-200/45 to-teal-300/15 shadow-[0_0_60px_rgb(125_231_255/0.2)]">
-                <MapPin className="h-11 w-11 text-white" strokeWidth={1.5} />
+              <div className="grid h-20 w-20 place-items-center rounded-full border border-white/40 bg-gradient-to-br from-cyan-200/45 to-teal-300/15 shadow-[0_0_60px_rgb(125_231_255/0.2)]">
+                <MapPin className="h-9 w-9 text-white" strokeWidth={1.5} />
               </div>
             </motion.div>
           </div>
@@ -141,12 +167,12 @@ const Home = () => {
 
         {/* Map Section */}
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="mx-auto grid w-full max-w-4xl gap-2.5 sm:grid-cols-2">
           {/* Location Filter Toggle */}
           <Button
             onClick={toggleLocationFilter}
             variant="outline"
-            className={`h-12 w-full rounded-2xl border-white/25 bg-white/10 text-white hover:border-white/50 hover:bg-white/15 ${
+            className={`h-11 w-full rounded-xl border-white/25 bg-white/10 text-white hover:border-white/50 hover:bg-white/15 ${
               showAllLocations
                 ? "ring-1 ring-amber-200/25"
                 : "ring-1 ring-emerald-200/20"
@@ -165,26 +191,19 @@ const Home = () => {
             )}
           </Button>
 
-          {/* Live Users Map Toggle */}
+          {/* Open live users and map drawer */}
           <Button
-            onClick={() => setShowMap(!showMap)}
+            onClick={() => setDiscoveryOpen(true)}
             variant="outline"
-            className="h-12 w-full rounded-2xl border-white/25 bg-white/10 text-white hover:bg-white/15"
+            className="h-11 w-full rounded-xl border-white/25 bg-white/10 text-white hover:bg-white/15"
           >
             <User2Icon className="mr-2 h-5 w-5" />
-            {showMap ? "Hide" : "Show"} Live Users
+            Live users & map <span className="ml-1 rounded-full bg-white/15 px-2 py-0.5 text-xs">{nearbyUsersCount}</span>
           </Button>
         </div>
-        {showMap && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
-            <Suspense fallback={<div role="status" className="glass-panel h-72 animate-pulse rounded-3xl" />}>
-              <Map />
-            </Suspense>
-          </motion.div>
-        )}
 
         {/* Recent Help Requests */}
-        <div>
+        <div className="mx-auto w-full max-w-4xl">
           <div className="mb-4 flex items-end justify-between gap-3">
             <div>
               <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Community board</p>
@@ -202,7 +221,7 @@ const Home = () => {
               {[1, 2, 3].map((i) => (
                 <Card
                   key={i}
-                  className="glass-panel h-44 animate-pulse overflow-hidden rounded-3xl"
+                  className="glass-panel h-36 animate-pulse overflow-hidden rounded-2xl"
                 >
                   <CardHeader className="pb-3">
                     <div className="skeleton-shimmer skeleton-shimmer-on-dark h-4 w-3/4 rounded"></div>
@@ -216,7 +235,7 @@ const Home = () => {
               ))}
             </div>
           ) : (
-            <div className="home-request-list grid gap-4 pb-8 md:grid-cols-2">
+            <div className="home-request-list grid gap-3 pb-8 md:grid-cols-2">
               {helpRequests.length === 0 ? (
                 <Card className="glass-panel rounded-3xl md:col-span-2">
                   <CardContent className="p-8 text-center sm:p-12">
@@ -249,10 +268,10 @@ const Home = () => {
                         handleRequestReply(request.id);
                       }
                     }}
-                    className="home-request-card cursor-pointer rounded-3xl focus-visible:outline-none"
+                    className="home-request-card cursor-pointer rounded-2xl focus-visible:outline-none"
                   >
-                    <Card className="glass-panel h-full rounded-3xl text-white transition-colors hover:border-white/45 hover:bg-white/15">
-                    <CardHeader className="pb-2">
+                    <Card className="glass-panel h-full rounded-2xl text-white transition-colors hover:border-white/45 hover:bg-white/15">
+                    <CardHeader className="px-4 pb-2 pt-4 sm:px-5">
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -270,24 +289,26 @@ const Home = () => {
                               </Badge>
                             )}
                           </div>
-                          <p className="line-clamp-4 break-words px-1 py-1 text-base font-medium leading-relaxed text-white sm:text-[17px]">
+                          <p className="line-clamp-3 break-words px-1 py-1 text-sm font-medium leading-relaxed text-white sm:text-[15px]">
                             {request.message}
                           </p>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-0">
-                      <span className="text-sm text-white/65">
-                        Posted by{" "}
-                        <span className="font-semibold text-white/90">
-                          {request.profiles?.full_name ||
-                            request.profiles?.username ||
-                            "Anonymous"}
-                        </span>
-                      </span>
+                    <CardContent className="px-4 pb-4 pt-0 sm:px-5">
+                      <div className="flex min-w-0 items-center gap-2 text-xs text-white/65 sm:text-sm">
+                        {request.profiles?.avatar_url ? (
+                          <img src={request.profiles.avatar_url} alt="" className="h-8 w-8 shrink-0 rounded-full border border-white/30 object-cover" loading="lazy" />
+                        ) : (
+                          <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/25 bg-white/10 text-xs font-semibold text-white">
+                            {(request.profiles?.full_name || request.profiles?.username || "A").charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="min-w-0 truncate">Posted by <span className="font-semibold text-white/90">{request.profiles?.full_name || request.profiles?.username || "Anonymous"}</span></span>
+                      </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
-                          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/75">
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/15 pt-3">
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-white/75 sm:text-xs">
                             <div className="flex items-center gap-1.5">
                               <Clock className="h-3 w-3" />
                               <span>{formatTime(request.created_at)}</span>
@@ -303,7 +324,7 @@ const Home = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleRequestReply(request.id)}
-                          className="h-9 shrink-0 rounded-xl border-white/25 bg-white/10 px-4 text-white hover:bg-white/20"
+                          className="h-8 shrink-0 rounded-lg border-white/25 bg-white/10 px-3 text-xs text-white hover:bg-white/20"
                         >
                           Reply
                         </Button>
@@ -317,6 +338,20 @@ const Home = () => {
           )}
         </div>
       </main>
+
+      <Sheet open={discoveryOpen} onOpenChange={setDiscoveryOpen}>
+        <SheetContent side="right" className="z-[70] flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-l-[1.75rem] border-l border-white/20 bg-[#303b91]/85 p-0 text-white shadow-2xl backdrop-blur-3xl sm:max-w-none sm:w-1/2">
+          <SheetHeader className="glass-header shrink-0 border-b border-white/15 px-5 py-5 pr-14 text-left sm:px-7">
+            <SheetTitle className="flex items-center gap-2 text-xl text-white sm:text-2xl"><Users className="h-5 w-5 text-cyan-100" /> People nearby</SheetTitle>
+            <SheetDescription className="text-sm text-white/70">Live community members and their locations within 10 km.</SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5">
+            <Suspense fallback={<div role="status" className="glass-panel h-80 animate-pulse rounded-3xl" />}>
+              <Map />
+            </Suspense>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

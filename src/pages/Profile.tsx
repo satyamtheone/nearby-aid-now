@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import UserFeedback from "@/components/UserFeedback";
 import { WebPushSettings } from "@/components/WebPushSettings";
+import { getProfileRequirementStatus } from "@/utils/profileCompletion";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -57,6 +58,7 @@ const Profile = () => {
     other: "",
   });
   const [avatarEmoji, setAvatarEmoji] = useState("");
+  const profileStatus = getProfileRequirementStatus({ ...profileData, social_links: socialLinks });
 
   const emojis = [
     "😊", // smiling
@@ -234,6 +236,39 @@ const Profile = () => {
       <main className="mx-auto max-w-5xl space-y-5 px-4 pb-32 pt-5 text-white sm:space-y-6 sm:px-6 sm:pt-8">
         <WebPushSettings />
 
+        <Card className="glass-panel rounded-3xl border-white/25 text-white">
+          <CardContent className="space-y-4 p-5 sm:p-6">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Profile completeness</p>
+                <p className="mt-1 text-xs text-white/70">Complete these details to build trust and enable chat messaging. You can save and finish later.</p>
+              </div>
+              <span className="text-2xl font-bold tabular-nums text-cyan-100">{profileStatus.percentage}%</span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Profile completeness"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={profileStatus.percentage}
+              className="h-2.5 overflow-hidden rounded-full bg-white/15"
+            >
+              <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-teal-300 transition-[width] duration-500" style={{ width: `${profileStatus.percentage}%` }} />
+            </div>
+            <ul className="grid gap-2 text-xs sm:grid-cols-2 sm:text-sm">
+              {profileStatus.items.map((item) => (
+                <li key={item.key} className={`flex items-center gap-2 ${item.complete ? "text-emerald-100" : "text-white/65"}`}>
+                  <span aria-hidden="true" className={`grid h-5 w-5 place-items-center rounded-full border text-[10px] ${item.complete ? "border-emerald-200/50 bg-emerald-300/20" : "border-white/30 bg-white/5"}`}>{item.complete ? "✓" : "•"}</span>
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+            <p className="border-t border-white/15 pt-3 text-xs leading-relaxed text-white/65">
+              Use your legal name as shown on official ID. We do not collect or verify government ID documents; profile details are self-reported.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Basic Information */}
         <Card className="glass-panel rounded-3xl text-white">
           <CardHeader>
@@ -245,7 +280,7 @@ const Profile = () => {
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="full_name">Full Name</Label>
+                <Label htmlFor="full_name">Legal full name <span className="text-rose-200">*</span></Label>
                 <Input
                   id="full_name"
                   value={profileData.full_name}
@@ -253,6 +288,7 @@ const Profile = () => {
                     handleInputChange("full_name", e.target.value)
                   }
                   placeholder="Enter your full name"
+                  autoComplete="name"
                 />
               </div>
               <div>
@@ -270,12 +306,15 @@ const Profile = () => {
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">Mobile number <span className="text-rose-200">*</span></Label>
                 <Input
                   id="phone"
                   value={profileData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
                   placeholder="Your phone number"
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="tel"
                 />
               </div>
               <div>
@@ -392,6 +431,7 @@ const Profile = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-xs text-white/65">Add at least one profile: Instagram or Facebook, to enable chat messaging.</p>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label
@@ -501,8 +541,9 @@ const Profile = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-xs text-white/65">Enter at least one address (home or current).</p>
             <div>
-              <Label htmlFor="home_address">Home Address</Label>
+              <Label htmlFor="home_address">Home address <span className="text-rose-200">(or current address is required)</span></Label>
               <Textarea
                 id="home_address"
                 value={profileData.home_address}

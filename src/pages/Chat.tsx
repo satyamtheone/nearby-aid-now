@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
 import { useMessages } from "@/hooks/useMessages";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,7 @@ interface ActiveUser {
   distance_km: number;
   is_online: boolean;
   avatar_emoji: string;
+  avatar_url?: string | null;
 }
 
 const Chat = () => {
@@ -65,7 +67,21 @@ const Chat = () => {
   }>({});
   const [loadingUsers, setLoadingUsers] = useState(false);
   const { user, userLocation, locationLoading } = useAuth();
+  const { loading: profileStatusLoading, isComplete: profileComplete } = useProfileCompletion();
+  const canSendMessages = !profileStatusLoading && profileComplete === true;
   const { messages, loading, sendMessage, fetchMessageById } = useMessages();
+
+  const ensureProfileCanMessage = () => {
+    if (canSendMessages) return true;
+    toast({
+      title: profileComplete === null ? "Could not verify your profile" : "Complete your profile to message",
+      description: profileComplete === null
+        ? "Please try again in a moment."
+        : "Add your legal name, mobile number, address, and Instagram or Facebook profile. You can update these in Profile.",
+      variant: "destructive",
+    });
+    return false;
+  };
 
   const fetchPinnedMessage = async () => {
     const { data: pin, error } = await supabase.from("community_chat_pin")
@@ -114,12 +130,23 @@ const Chat = () => {
       const nearbyUsers = (data as ActiveUser[]) || [];
       console.log("Chat: Nearby users:", nearbyUsers);
 
+      const userIds = nearbyUsers.map((nearbyUser) => nearbyUser.user_id);
+      const { data: avatarProfiles, error: avatarError } = userIds.length
+        ? await supabase.from("profiles").select("id, avatar_url").in("id", userIds)
+        : { data: [], error: null };
+      if (avatarError) console.warn("Chat: Could not load active user pictures:", avatarError);
+      const avatarByUserId = new Map((avatarProfiles || []).map((profile) => [profile.id, profile.avatar_url]));
+      const usersWithAvatars = nearbyUsers.map((nearbyUser) => ({
+        ...nearbyUser,
+        avatar_url: avatarByUserId.get(nearbyUser.user_id) || null,
+      }));
+
       // Store all nearby users
-      setActiveUsers(nearbyUsers);
+      setActiveUsers(usersWithAvatars);
 
       // Create status map for all users
       const statusMap: { [key: string]: boolean } = {};
-      nearbyUsers.forEach((u) => {
+      usersWithAvatars.forEach((u) => {
         statusMap[u.user_id] = u.is_online;
       });
       setUserOnlineStatus(statusMap);
@@ -176,6 +203,7 @@ const Chat = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ensureProfileCanMessage()) return;
     if (!newMessage.trim()) return;
 
     const messageText = newMessage.trim();
@@ -196,6 +224,7 @@ const Chat = () => {
   };
 
   const shareLocation = async () => {
+    if (!ensureProfileCanMessage()) return;
     if (!userLocation) {
       toast({ title: "Location unavailable", description: "Allow location access and try again.", variant: "destructive" });
       return;
@@ -218,6 +247,7 @@ const Chat = () => {
   const handleMediaSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
+    if (!ensureProfileCanMessage()) return;
     if (!file || !user) return;
     if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
       toast({ title: "Unsupported file", description: "Choose an image or video.", variant: "destructive" });
@@ -260,6 +290,7 @@ const Chat = () => {
 
   const shareLink = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!ensureProfileCanMessage()) return;
     try {
       const url = new URL(linkInput.trim());
       if (!["http:", "https:"].includes(url.protocol)) throw new Error("Use a link that starts with http:// or https://");
@@ -418,7 +449,9 @@ const Chat = () => {
                     >
                       <div className="flex items-center space-x-3 px-3 py-2 hover:bg-white/10 cursor-pointer transition-colors border-b-[0.5px] border-white/10 last:border-b-0">
                         <div className="relative">
-                          {u.avatar_emoji ? (
+                          {u.avatar_url ? (
+                            <img src={u.avatar_url} alt={`${u.full_name || u.username || "Community member"}'s profile`} className="h-8 w-8 rounded-full border border-white/30 object-cover" loading="lazy" />
+                          ) : u.avatar_emoji ? (
                             <div className="h-8 w-8 flex items-center justify-center text-lg rounded-full border border-white/30 bg-white/10">
                               {u.avatar_emoji}
                             </div>
@@ -610,10 +643,16 @@ const Chat = () => {
       <div className="safe-area-bottom z-20 shrink-0 px-2 pb-2 pt-2 sm:px-5 sm:pb-3">
         <div className="chat-composer-panel mx-auto max-w-4xl p-2 sm:p-3">
           <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMediaSelected} />
+          {!canSendMessages && (
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-100/25 bg-amber-100/10 px-3 py-2 text-xs text-white/85" role="status">
+              <span>{profileStatusLoading ? "Checking profile…" : profileComplete === null ? "Profile status is unavailable; messaging is paused." : "Complete your profile to send messages and build trust."}</span>
+              {!profileStatusLoading && <Button type="button" size="sm" variant="secondary" className="h-8 text-xs text-white" onClick={() => navigate("/profile")}>Complete profile</Button>}
+            </div>
+          )}
           {showLinkInput && (
             <form onSubmit={shareLink} className="mb-2 flex gap-2">
               <Input type="url" value={linkInput} onChange={(event) => setLinkInput(event.target.value)} placeholder="Paste a link (https://...)" className="text-black" />
-              <Button type="submit" size="sm" disabled={!linkInput.trim()}>Share</Button>
+              <Button type="submit" size="sm" disabled={!canSendMessages || !linkInput.trim()}>Share</Button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setShowLinkInput(false)}>Cancel</Button>
             </form>
           )}
@@ -640,17 +679,17 @@ const Chat = () => {
             return <div className="mb-2 flex items-center gap-2 rounded-lg border-l-4 border-amber-400 bg-white/15 px-3 py-2 text-sm text-white"><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Replying to {target?.profiles?.full_name || target?.profiles?.username || "message"}</p><p className="truncate text-xs">{preview}</p></div><button type="button" aria-label="Cancel reply" onClick={() => setReplyToMessageId(null)} className="px-2 text-lg">×</button></div>;
           })()}
           <div className="mb-2 flex snap-x items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "image/*"; fileInputRef.current.click(); } }} disabled={uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><ImageIcon className="h-4 w-4" /><span>Image</span></Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "video/*"; fileInputRef.current.click(); } }} disabled={uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><Video className="h-4 w-4" /><span>Video</span></Button>
-            <Button type="button" size="sm" variant="ghost" onClick={shareLocation} className="h-9 gap-1 px-2 text-xs text-white"><MapPin className="h-4 w-4" /><span>Location</span></Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setShowLinkInput((current) => !current)} className="h-9 gap-1 px-2 text-xs text-white"><LinkIcon className="h-4 w-4" /><span>Link</span></Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setShowEmojiPicker((current) => !current)} className="h-9 gap-1 px-2 text-xs text-white"><Smile className="h-4 w-4" /><span>Emoji</span></Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setShowReferencePicker((current) => !current)} className="h-9 gap-1 border border-amber-200/70 px-2 text-xs text-white"><Pin className="h-4 w-4" /><span>Reference</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "image/*"; fileInputRef.current.click(); } }} disabled={!canSendMessages || uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><ImageIcon className="h-4 w-4" /><span>Image</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "video/*"; fileInputRef.current.click(); } }} disabled={!canSendMessages || uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><Video className="h-4 w-4" /><span>Video</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={shareLocation} disabled={!canSendMessages} className="h-9 gap-1 px-2 text-xs text-white"><MapPin className="h-4 w-4" /><span>Location</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowLinkInput((current) => !current)} disabled={!canSendMessages} className="h-9 gap-1 px-2 text-xs text-white"><LinkIcon className="h-4 w-4" /><span>Link</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowEmojiPicker((current) => !current)} disabled={!canSendMessages} className="h-9 gap-1 px-2 text-xs text-white"><Smile className="h-4 w-4" /><span>Emoji</span></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setShowReferencePicker((current) => !current)} disabled={!canSendMessages} className="h-9 gap-1 border border-amber-200/70 px-2 text-xs text-white"><Pin className="h-4 w-4" /><span>Reference</span></Button>
             {uploadingMedia && <span role="status" className="inline-flex items-center gap-1 text-xs text-white"><Loader2 className="loading-spinner h-3.5 w-3.5" />Uploading…</span>}
           </div>
           <form onSubmit={handleSendMessage} className="flex space-x-2">
-            <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type your message..." className="flex-1 rounded-full border-gray-300 text-black focus:border-blue-500 focus:ring-blue-500" maxLength={1000} />
-            <Button type="submit" size="sm" disabled={!newMessage.trim()} className="rounded-full border-[0.5px] border-blue-200 shadow-white/15 h-10 w-10 p-0 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"><Send className="h-4 w-4" /></Button>
+            <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} disabled={!canSendMessages} placeholder={canSendMessages ? "Type your message..." : "Complete your profile to message"} className="flex-1 rounded-full border-gray-300 text-black focus:border-blue-500 focus:ring-blue-500" maxLength={1000} />
+            <Button type="submit" size="sm" disabled={!canSendMessages || !newMessage.trim()} className="rounded-full border-[0.5px] border-blue-200 shadow-white/15 h-10 w-10 p-0 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700"><Send className="h-4 w-4" /></Button>
           </form>
         </div>
       </div>

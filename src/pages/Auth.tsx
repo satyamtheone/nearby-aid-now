@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Mail, Lock, User } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Phone, Home, Instagram, Facebook } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [facebook, setFacebook] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -53,7 +58,11 @@ const Auth = () => {
           });
         }
       } else {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(email, password, fullName, {
+          phone,
+          homeAddress: address,
+          socialLinks: { instagram, facebook },
+        });
         if (error) {
           if (error.message.includes("User already registered")) {
             toast({
@@ -126,17 +135,44 @@ const Auth = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4" />
-                  <Input
-                    type="text"
-                    placeholder="Full Name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-10"
-                    required={!isLogin}
-                  />
+                <div className="space-y-1.5">
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4" />
+                    <Input
+                      type="text"
+                      placeholder="Legal full name (optional)"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="pl-10"
+                      autoComplete="name"
+                    />
+                  </div>
+                  <p className="px-1 text-xs text-white/65">Use your legal name if you choose to add it. Identity documents are not collected or verified here.</p>
                 </div>
+              )}
+
+              {!isLogin && (
+                <>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4" />
+                    <Input type="tel" inputMode="tel" autoComplete="tel" placeholder="Mobile number (optional)" value={phone} onChange={(event) => setPhone(event.target.value)} className="pl-10" />
+                  </div>
+                  <div className="relative">
+                    <Home className="absolute left-3 top-3 h-4 w-4" />
+                    <Textarea autoComplete="street-address" placeholder="Home or current address (optional)" value={address} onChange={(event) => setAddress(event.target.value)} className="min-h-20 pl-10" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="relative">
+                      <Instagram className="absolute left-3 top-3 h-4 w-4" />
+                      <Input type="text" placeholder="Instagram profile" value={instagram} onChange={(event) => setInstagram(event.target.value)} className="pl-10" aria-label="Instagram profile" />
+                    </div>
+                    <div className="relative">
+                      <Facebook className="absolute left-3 top-3 h-4 w-4" />
+                      <Input type="text" placeholder="Facebook profile" value={facebook} onChange={(event) => setFacebook(event.target.value)} className="pl-10" aria-label="Facebook profile" />
+                    </div>
+                  </div>
+                  <p className="-mt-2 px-1 text-xs text-white/65">Profile details are optional now. Complete them later to enable chat messaging. We do not verify government ID documents.</p>
+                </>
               )}
 
               <div className="relative">
