@@ -391,6 +391,17 @@ export type Database = {
       }
     }
     Functions: {
+      create_help_request: {
+        Args: {
+          p_category: Database["public"]["Enums"]["help_category"]
+          p_is_urgent: boolean
+          p_latitude: number | null
+          p_location_name: string | null
+          p_longitude: number | null
+          p_message: string
+        }
+        Returns: string
+      }
       claim_request_push_delivery: {
         Args: { p_delivery_id: string }
         Returns: boolean

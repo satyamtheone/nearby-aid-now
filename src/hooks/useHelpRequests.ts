@@ -95,10 +95,6 @@ export function useHelpRequests() {
     is_urgent: boolean;
     location_name?: string;
   }) => {
-    console.log('Creating help request with data:', request);
-    console.log('Current user:', user);
-    console.log('User location:', userLocation);
-
     if (!user) {
       console.error('User not authenticated');
       return { error: 'User not authenticated' };
@@ -106,7 +102,7 @@ export function useHelpRequests() {
 
     try {
       // First, let's check if the user has a profile
-      const { data: profileData, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', user.id)
@@ -117,24 +113,14 @@ export function useHelpRequests() {
         return { error: 'User profile not found. Please try signing out and back in.' };
       }
 
-      console.log('User profile found:', profileData);
-
-      const insertData = {
-        user_id: user.id,
-        category: request.category,
-        message: request.message,
-        is_urgent: request.is_urgent,
-        location_name: request.location_name || userLocation?.name || null,
-        location_point: userLocation ? `POINT(${userLocation.lng} ${userLocation.lat})` : null,
-      };
-
-      console.log('Inserting data:', insertData);
-
-      const { data, error } = await supabase
-        .from('help_requests')
-        .insert(insertData)
-        .select()
-        .single();
+      const { data: requestId, error } = await supabase.rpc('create_help_request', {
+        p_category: request.category,
+        p_message: request.message,
+        p_is_urgent: request.is_urgent,
+        p_location_name: request.location_name || userLocation?.name || null,
+        p_latitude: userLocation?.lat ?? null,
+        p_longitude: userLocation?.lng ?? null,
+      });
 
       if (error) {
         console.error('Error creating help request:', error);
@@ -147,7 +133,11 @@ export function useHelpRequests() {
         return { error: `Database error: ${error.message}` };
       }
 
-      console.log('Help request created successfully:', data);
+      if (!requestId) {
+        return { error: 'The database did not return the new request ID. Please try again.' };
+      }
+
+      console.log('Help request created successfully:', requestId);
 
       // Refresh the list
       fetchHelpRequests();
@@ -155,7 +145,7 @@ export function useHelpRequests() {
       try {
         const { data: notificationResult, error } = await supabase.functions.invoke(
           'notify-nearby-request',
-          { body: { requestId: data.id } },
+          { body: { requestId } },
         );
         notificationError = error?.message ||
           (notificationResult?.failed > 0 ? 'Some nearby notifications could not be delivered.' : null);
@@ -165,7 +155,7 @@ export function useHelpRequests() {
           : 'Nearby notifications could not be confirmed.';
       }
       return {
-        data,
+        data: { id: requestId },
         notificationError,
       };
     } catch (error) {
