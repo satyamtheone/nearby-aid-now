@@ -28,6 +28,7 @@ import UserProfileModal from "@/components/UserProfileModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { parseReplyFallbackText } from "@/utils/chatMessageUtils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ModerationReportDialog } from "@/components/ModerationReportDialog";
 
 interface ActiveUser {
   user_id: string;
@@ -621,6 +622,7 @@ const Chat = () => {
                         <button type="button" onClick={() => pinMessage(message)} disabled={pinningMessageId === message.id} className="inline-flex items-center gap-1 text-xs text-amber-200 hover:text-amber-100 disabled:opacity-50">
                           <Pin className="h-3 w-3" />{pinnedMessage?.id === message.id ? "Pinned" : pinningMessageId === message.id ? "Pinning..." : "Pin reference"}
                         </button>
+                        {!isOwnMessage && <ModerationReportDialog target={{ message_id: message.id }} />}
                         <p
                           className={`text-xs mt-1
                              text-blue-100  `}

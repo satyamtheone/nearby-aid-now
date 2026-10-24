@@ -46,6 +46,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { parseReplyFallbackText } from "@/utils/chatMessageUtils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ModerationReportDialog } from "@/components/ModerationReportDialog";
 
 const RequestChat = () => {
   const navigate = useNavigate();
@@ -896,6 +897,7 @@ const RequestChat = () => {
                         >
                           💬 Reply
                         </button>
+                        {!isOwnMessage && <ModerationReportDialog target={{ message_id: message.id }} />}
                         <span>{formatChatTime(message.created_at)}</span>
                       </div>
                     </div>

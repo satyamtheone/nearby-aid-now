@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { ModerationReportDialog } from "@/components/ModerationReportDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useHelpRequests } from "@/hooks/useHelpRequests";
 import { formatTime } from "@/utils/timeUtils";
@@ -320,10 +321,11 @@ const Home = () => {
                                 : "Distance unknown"}
                             </div>
                           </div>
+                        {request.user_id !== user?.id && <ModerationReportDialog target={{ help_request_id: request.id }} label="Report" />}
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleRequestReply(request.id)}
+                          onClick={(event) => { event.stopPropagation(); handleRequestReply(request.id); }}
                           className="h-8 shrink-0 rounded-lg border-white/25 bg-white/10 px-3 text-xs text-white hover:bg-white/20"
                         >
                           Reply

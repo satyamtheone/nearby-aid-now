@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileCompletion } from "@/hooks/useProfileCompletion";
+import { supabase } from "@/integrations/supabase/client";
+import { CURRENT_TERMS_VERSION } from "@/components/TermsAcceptanceGate";
 
 export function ProfileCompletionPrompt() {
   const { user } = useAuth();
@@ -12,11 +14,23 @@ export function ProfileCompletionPrompt() {
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const storageKey = user?.id ? `profile-completion-prompt-dismissed:${user.id}` : "";
 
   useEffect(() => {
-    if (!user || loading || isComplete !== false) return;
-    if (location.pathname === "/profile" || location.pathname === "/auth") {
+    let active = true;
+    if (!user) { setTermsAccepted(false); return; }
+    void (supabase.from("profiles") as any).select("terms_accepted_at, terms_version").eq("id", user.id).maybeSingle().then(({ data, error }: any) => {
+      if (active) setTermsAccepted(!error && data?.terms_version === CURRENT_TERMS_VERSION && Boolean(data?.terms_accepted_at));
+    });
+    const accepted = () => setTermsAccepted(true);
+    window.addEventListener("nearby-aid-terms-accepted", accepted);
+    return () => { active = false; window.removeEventListener("nearby-aid-terms-accepted", accepted); };
+  }, [user?.id, location.pathname]);
+
+  useEffect(() => {
+    if (!user || !termsAccepted || loading || isComplete !== false) { setOpen(false); return; }
+    if (["/profile", "/auth", "/account-deletion", "/privacy", "/terms"].includes(location.pathname)) {
       setOpen(false);
       return;
     }
@@ -25,7 +39,7 @@ export function ProfileCompletionPrompt() {
     } catch {
       setOpen(true);
     }
-  }, [user?.id, loading, isComplete, location.pathname, storageKey]);
+  }, [user?.id, termsAccepted, loading, isComplete, location.pathname, storageKey]);
 
   const dismissForSession = () => {
     try {

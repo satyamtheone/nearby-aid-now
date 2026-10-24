@@ -39,6 +39,14 @@ npx tsc -p tsconfig.app.json --noEmit
 npm run lint
 ```
 
+## Play Store safety and account deletion
+
+- Apply `supabase/migrations/20261025120000_play_store_compliance.sql` before deploying the updated app. It adds terms acceptance, user blocks, UGC reports, moderation review functions, and filters blocked accounts from nearby results and request notifications.
+- Deploy the authenticated deletion endpoint with `npx supabase functions deploy delete-account`. It deletes the signed-in account, related profile/request/chat data, device registrations, and uploaded `community-media` files. The Supabase service-role key stays server-side in Edge Function secrets.
+- The app includes `/privacy`, `/terms`, `/account-deletion`, and a moderator-only `/moderation` dashboard. Use the deployed HTTPS `/account-deletion` URL in the Play Console account-deletion field.
+- Assign `app_metadata.role` as `moderator` or `admin` to trusted moderation staff from a secure server-side/admin tool. The client must not be allowed to set this claim.
+- Before Play review, create a dedicated production review login and follow `docs/PLAY_REVIEW_ACCESS.md`. Keep the password in Play Console App access, not in Git.
+
 # Nearby request push notifications
 
 Push notifications are sent by the authenticated `notify-nearby-request` Supabase Edge Function. It targets registered Android and opted-in browser devices belonging to users whose most recently saved profile location is within 10 km of the new request. The request creator is excluded. Android notification taps and web notification clicks open that request's chat.

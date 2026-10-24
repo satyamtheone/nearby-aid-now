@@ -26,6 +26,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import UserFeedback from "@/components/UserFeedback";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
+import { ModerationReportDialog } from "@/components/ModerationReportDialog";
 
 interface UserProfile {
   id: string;
@@ -62,6 +65,36 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const [blocking, setBlocking] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+
+  const blockUser = async () => {
+    if (!user || user.id === userId || blocking) return;
+    if (!window.confirm(`Block ${userName}? Their messages and requests will be hidden from you.`)) return;
+    setBlocking(true);
+    const { error } = await (supabase as any).from("user_blocks").insert({ blocker_id: user.id, blocked_id: userId });
+    setBlocking(false);
+    if (error && error.code !== "23505") {
+      toast({ title: "Could not block user", description: error.message, variant: "destructive" });
+      return;
+    }
+    setBlocked(true);
+    toast({ title: "User blocked", description: "Their content will no longer appear in your chats and nearby requests." });
+  };
+
+  const unblockUser = async () => {
+    if (!user || blocking) return;
+    setBlocking(true);
+    const { error } = await (supabase as any).from("user_blocks").delete().eq("blocker_id", user.id).eq("blocked_id", userId);
+    setBlocking(false);
+    if (error) {
+      toast({ title: "Could not unblock user", description: error.message, variant: "destructive" });
+      return;
+    }
+    setBlocked(false);
+    toast({ title: "User unblocked" });
+  };
 
   const fetchProfile = async () => {
     if (!userId || !open) return;
@@ -92,6 +125,15 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
       fetchProfile();
     }
   }, [open, userId]);
+
+  useEffect(() => {
+    if (!open || !user || user.id === userId) return;
+    let active = true;
+    void (supabase as any).from("user_blocks").select("blocked_id").eq("blocker_id", user.id).eq("blocked_id", userId).maybeSingle().then(({ data }: any) => {
+      if (active) setBlocked(Boolean(data));
+    });
+    return () => { active = false; };
+  }, [open, user?.id, userId]);
 
   const formatLastSeen = (lastSeen: string | null) => {
     if (!lastSeen) return "Unknown";
@@ -247,6 +289,15 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({
             )}
 
             {profile && <UserFeedback userId={profile.id} />}
+
+            {user && user.id !== userId && (
+              <div className="flex flex-wrap items-center justify-end gap-2 rounded-2xl border border-white/15 bg-white/5 p-2">
+                <ModerationReportDialog target={{ reported_user_id: userId }} label="Report user" />
+                <Button type="button" size="sm" variant="ghost" disabled={blocking} onClick={() => void (blocked ? unblockUser() : blockUser())} className="text-rose-100 hover:bg-rose-400/15 hover:text-white">
+                  {blocking ? "Saving…" : blocked ? "Unblock user" : "Block user"}
+                </Button>
+              </div>
+            )}
 
             {/* Social Links */}
             {profile &&

@@ -16,6 +16,7 @@ import { WebPushManager } from "@/components/WebPushManager";
 import { MobileDock } from "@/components/MobileDock";
 import { ProfileCompletionPrompt } from "@/components/ProfileCompletionPrompt";
 import { MotionConfig } from "framer-motion";
+import { TermsAcceptanceGate } from "@/components/TermsAcceptanceGate";
 const Home = lazy(() => import("./pages/Home"));
 const AskHelp = lazy(() => import("./pages/AskHelp"));
 const Chat = lazy(() => import("./pages/Chat"));
@@ -23,6 +24,10 @@ const RequestChat = lazy(() => import("./pages/RequestChat"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Auth = lazy(() => import("./pages/Auth"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const AccountDeletion = lazy(() => import("./pages/AccountDeletion"));
+const ModerationDashboard = lazy(() => import("./pages/ModerationDashboard"));
 
 const NativeAuthRedirectHandler = () => {
   const navigate = useNavigate();
@@ -82,6 +87,7 @@ const App = () => (
           <WebPushManager />
           <MobileDock />
           <ProfileCompletionPrompt />
+          <TermsAcceptanceGate />
           <Suspense
             fallback={
               <div className="safe-area-top flex min-h-dvh items-center justify-center bg-gradient-to-br from-teal-400 via-purple-400 to-blue-500 text-white">
@@ -90,6 +96,10 @@ const App = () => (
             }
           >
             <Routes>
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/account-deletion" element={<AccountDeletion />} />
+              <Route path="/moderation" element={<ModerationDashboard />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={
                 <ProtectedRoute>

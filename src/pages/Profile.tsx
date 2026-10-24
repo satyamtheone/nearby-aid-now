@@ -33,6 +33,8 @@ import { toast } from "@/hooks/use-toast";
 import UserFeedback from "@/components/UserFeedback";
 import { WebPushSettings } from "@/components/WebPushSettings";
 import { getProfileRequirementStatus } from "@/utils/profileCompletion";
+import { Trash2, ShieldCheck } from "lucide-react";
+import { Link as RouterLink } from "react-router-dom";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -571,6 +573,19 @@ const Profile = () => {
         </Card>
 
         {user && <UserFeedback userId={user.id} />}
+
+        <Card className="glass-panel rounded-3xl border-white/20 text-white">
+          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck className="h-4 w-4 text-cyan-100" />Safety and privacy</h2>
+              <p className="mt-1 text-sm text-white/70">Review the community rules, privacy details, or permanently delete your account.</p>
+              <div className="mt-2 flex gap-4 text-xs text-cyan-100"><RouterLink className="underline" to="/terms">Terms</RouterLink><RouterLink className="underline" to="/privacy">Privacy policy</RouterLink></div>
+            </div>
+            <Button type="button" variant="destructive" className="shrink-0" onClick={() => navigate("/account-deletion")}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete account
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Save Button */}
         <div className="sticky bottom-24 flex justify-end md:bottom-5">

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail, Lock, User, Phone, Home, Instagram, Facebook } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -227,6 +228,7 @@ const Auth = () => {
                   : "Already have an account? Sign in"}
               </button>
             </div>
+            <p className="mt-4 text-center text-xs text-white/65">By creating an account you agree to our <Link to="/terms" className="underline text-cyan-100">Terms of Use</Link>. Read the <Link to="/privacy" className="underline text-cyan-100">Privacy Policy</Link>.</p>
           </CardContent>
         </Card>
       </main>
