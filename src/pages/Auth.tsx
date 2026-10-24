@@ -88,16 +88,16 @@ const Auth = () => {
   };
 
   return (
-    <div className="page-enter min-h-dvh flex flex-col bg-gradient-to-br from-teal-400 via-purple-500 to-blue-600 animate-gradient-xy text-shadow-2xl text-white text-shadow-blue-200">
+    <div className="app-page page-enter flex min-h-dvh flex-col text-white">
       {/* Header */}
-      <div className=" border-b-[0.5px] border-blue-200 backdrop-blur-md  bg-white/10">
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full  px-1 sm:px-4 py-4">
+      <header className="safe-area-top glass-header border-b">
+        <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center space-x-3">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => navigate("/")}
-              className="p-2"
+              className="h-10 w-10 rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -109,10 +109,10 @@ const Auth = () => {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="flex-1 flex items-center justify-center px-1 sm:px-4 py-8">
-        <Card className="w-full max-w-md max-md:max-w-lg md:max-w-xl mx-auto  px-1 sm:px-4 border-[0.5px] border-blue-200 backdrop-blur-md  bg-white/10">
+      <main className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+        <Card className="glass-panel mx-auto w-full max-w-md rounded-3xl px-1 text-white sm:rounded-[2rem] sm:px-4">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-white">
               {isLogin ? "Welcome Back" : "Join Local Help"}
@@ -193,7 +193,7 @@ const Auth = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 };

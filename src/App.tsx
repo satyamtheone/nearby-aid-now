@@ -13,6 +13,8 @@ import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
 import { WebPushManager } from "@/components/WebPushManager";
+import { MobileDock } from "@/components/MobileDock";
+import { MotionConfig } from "framer-motion";
 const Home = lazy(() => import("./pages/Home"));
 const AskHelp = lazy(() => import("./pages/AskHelp"));
 const Chat = lazy(() => import("./pages/Chat"));
@@ -67,6 +69,7 @@ const NativeAuthRedirectHandler = () => {
 const queryClient = new QueryClient();
 
 const App = () => (
+  <MotionConfig reducedMotion="user">
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -76,6 +79,7 @@ const App = () => (
           <NativeAuthRedirectHandler />
           <PushNotificationManager />
           <WebPushManager />
+          <MobileDock />
           <Suspense
             fallback={
               <div className="safe-area-top flex min-h-dvh items-center justify-center bg-gradient-to-br from-teal-400 via-purple-400 to-blue-500 text-white">
@@ -117,6 +121,7 @@ const App = () => (
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
+  </MotionConfig>
 );
 
 export default App;

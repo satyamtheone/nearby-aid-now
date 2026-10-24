@@ -211,33 +211,31 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-dvh ">
+    <div className="app-page page-enter min-h-dvh text-white">
       {/* Header */}
-      <div className="safe-area-top sticky top-0 z-50 border-b-[0.5px] border-blue-200 backdrop-blur-2xl bg-black/10 text-shadow-2xl text-white">
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4  py-4">
-          <div className="flex items-center space-x-3">
+      <header className="safe-area-top glass-header sticky top-0 z-40 border-b text-white">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-6">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => navigate("/")}
-              className="p-2"
+              className="h-10 w-10 rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-semibold">Edit Profile</h1>
-              <p className="text-sm">Update your personal information</p>
+              <h1 className="text-base font-semibold sm:text-lg">Edit profile</h1>
+              <p className="text-xs text-white/70 sm:text-sm">Your details and preferences</p>
             </div>
-          </div>
         </div>
-      </div>
+      </header>
 
       {/* Profile Form */}
-      <div className=" max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 space-y-6   text-white">
+      <main className="mx-auto max-w-5xl space-y-5 px-4 pb-32 pt-5 text-white sm:space-y-6 sm:px-6 sm:pt-8">
         <WebPushSettings />
 
         {/* Basic Information */}
-        <Card className=" backdrop-blur-xl  bg-white/10 text-white">
+        <Card className="glass-panel rounded-3xl text-white">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <User className="h-5 w-5" />
@@ -317,7 +315,7 @@ const Profile = () => {
         </Card>
 
         {/* Profile Picture */}
-        <Card className="border-b-[0.5px] border-blue-200 backdrop-blur-2xl bg-white/10 text-white">
+        <Card className="glass-panel rounded-3xl text-white">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Camera className="h-5 w-5" />
@@ -341,7 +339,7 @@ const Profile = () => {
         </Card>
 
         {/* Avatar Emoji */}
-        <Card className="border-b-[0.5px] border-blue-200 backdrop-blur-2xl  bg-white/10 text-white">
+        <Card className="glass-panel rounded-3xl text-white">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <UserCircle className="h-5 w-5" />
@@ -386,7 +384,7 @@ const Profile = () => {
         </Card>
 
         {/* Social Links */}
-        <Card className="border-b-[0.5px] border-blue-200 backdrop-blur-2xl  bg-white/10 text-white">
+        <Card className="glass-panel rounded-3xl text-white">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Link className="h-5 w-5" />
@@ -495,7 +493,7 @@ const Profile = () => {
         </Card>
 
         {/* Address Information */}
-        <Card className="border-b-[0.5px] border-blue-200 backdrop-blur-2xl  bg-white/10 text-white">
+        <Card className="glass-panel rounded-3xl text-white">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Home className="h-5 w-5" />
@@ -534,7 +532,7 @@ const Profile = () => {
         {user && <UserFeedback userId={user.id} />}
 
         {/* Save Button */}
-        <div className="flex justify-end sticky bottom-5">
+        <div className="sticky bottom-24 flex justify-end md:bottom-5">
           <Button
             onClick={handleSave}
             disabled={loading || uploadingAvatar}
@@ -544,7 +542,7 @@ const Profile = () => {
             <span>{loading ? "Saving..." : "Save Profile"}</span>
           </Button>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

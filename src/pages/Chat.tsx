@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Send,
@@ -312,10 +313,10 @@ const Chat = () => {
   const onlineUsers = activeUsers.filter((u) => u.is_online);
 
   return (
-    <div className="min-h-dvh flex flex-col text-shadow-2xl text-white text-shadow-blue-200">
+    <div className="app-page flex h-[100dvh] min-h-0 flex-col overflow-hidden text-white text-shadow-2xl text-shadow-blue-200">
       {/* Header */}
-      <div className="safe-area-top shadow-sm sticky top-0 border-b-[0.5px] border-blue-200 backdrop-blur-2xl bg-black/10 z-50">
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4">
+      <div className="glass-header safe-area-top z-30 shrink-0 border-b border-white/20">
+        <div className="mx-auto max-w-5xl px-3 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Button
@@ -471,7 +472,8 @@ const Chat = () => {
           </div>
         </button>
       )}
-      <div className="flex-1 max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full  px-1 sm:px-4 py-4 overflow-y-auto">
+      <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-5">
+        <div className="mx-auto max-w-4xl">
         {loading ? (
           <div className="space-y-4 py-2" role="status" aria-label="Loading messages">
             {["start", "end", "start"].map((side, index) => (
@@ -512,7 +514,10 @@ const Chat = () => {
                 const visibleMessage = fallbackReply.body === "Shared a link" || fallbackReply.body === "Shared a location" ? "" : fallbackReply.body;
 
                 return (
-                  <div
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
                     key={message.id}
                     ref={(element) => { messageRefs.current[message.id] = element; }}
                     className={`flex ${
@@ -520,7 +525,7 @@ const Chat = () => {
                     } ${highlightedMessageId === message.id ? "rounded-xl bg-amber-300/30 ring-4 ring-amber-300 shadow-xl transition-all duration-300" : "transition-all duration-300"}`}
                   >
                     <div
-                      className={`chat-message-bubble max-w-[80%] rounded-xl border-[0.5px] border-blue-200 backdrop-blur-sm bg-white/10 px-4 py-3 ${
+                      className={`chat-message-bubble w-fit max-w-[88%] rounded-2xl border border-white/25 px-3 py-3 sm:max-w-[72%] sm:px-4 ${
                         isOwnMessage ? "bg-white" : ""
                       }`}
                     >
@@ -531,13 +536,13 @@ const Chat = () => {
                             userName={userName}
                             isOnline={online}
                           >
-                            <button className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+                            <button className="flex max-w-full items-center gap-2 rounded-full border border-cyan-100/20 bg-white/10 px-2.5 py-1 hover:bg-white/15">
                               <div
-                                className={`w-3 h-3 rounded-full ${
+                                className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/10 ${
                                   online ? "bg-green-500" : "bg-gray-200"
                                 }`}
                               ></div>
-                              <span className="text-[13px] font-medium text-blue-600 capitalize">
+                              <span className="max-w-[15rem] truncate text-sm font-semibold text-cyan-100 capitalize">
                                 {userName}
                               </span>
                             </button>
@@ -545,37 +550,37 @@ const Chat = () => {
                         </div>
                       )}
                       {referencedMessageId && (
-                        <button type="button" onClick={() => void jumpToMessage(referencedMessageId)} className="mb-2 block w-full cursor-pointer border-l-2 border-amber-400 bg-black/10 px-2 py-1 text-left text-xs text-white/80 hover:bg-black/20">
+                        <button type="button" onClick={() => void jumpToMessage(referencedMessageId)} className="mb-2 block w-full cursor-pointer rounded-r-xl border-l-2 border-amber-300 bg-white/10 px-3 py-2 text-left text-xs text-white/90 hover:bg-white/15">
                           <span className="block font-semibold">Replying to {replyTarget?.profiles?.full_name || replyTarget?.profiles?.username || "message"}</span>
                           <span className="block truncate">{replyPreview}</span>
                         </button>
                       )}
                       {message.content_type === "image" && message.attachment_url && (
-                        <button type="button" onClick={() => setMediaPreview({ type: "image", url: message.attachment_url!, name: message.attachment_name || undefined })} className="block cursor-zoom-in">
-                          <img src={message.attachment_url} alt={message.attachment_name || "Shared image"} className="max-h-72 max-w-full rounded-lg object-contain" loading="lazy" />
+                        <button type="button" onClick={() => setMediaPreview({ type: "image", url: message.attachment_url!, name: message.attachment_name || undefined })} className="message-media-button group cursor-zoom-in">
+                          <img src={message.attachment_url} alt={message.attachment_name || "Shared image"} className="max-h-[26rem] w-full object-contain transition-transform duration-300 group-hover:scale-[1.015]" loading="lazy" />
                         </button>
                       )}
                       {message.content_type === "video" && message.attachment_url && (
-                        <button type="button" onClick={() => setMediaPreview({ type: "video", url: message.attachment_url!, name: message.attachment_name || undefined })} className="relative block cursor-zoom-in">
-                          <video src={message.attachment_url} muted preload="metadata" className="max-h-72 max-w-full rounded-lg" aria-label={message.attachment_name || "Shared video"} />
+                        <button type="button" onClick={() => setMediaPreview({ type: "video", url: message.attachment_url!, name: message.attachment_name || undefined })} className="message-media-button group relative cursor-zoom-in">
+                          <video src={message.attachment_url} muted preload="metadata" className="max-h-[26rem] w-full object-contain" aria-label={message.attachment_name || "Shared video"} />
                           <span className="absolute inset-0 flex items-center justify-center text-3xl text-white drop-shadow">▶</span>
                         </button>
                       )}
                       {message.content_type === "link" && message.attachment_url && (
-                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="my-2 block max-w-full break-all rounded-lg bg-blue-50 p-3 text-blue-700 underline">
-                          <span className="flex items-center gap-2"><LinkIcon className="h-4 w-4 shrink-0" />{message.attachment_url}</span>
+                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="message-link-card my-2 block max-w-full break-all rounded-xl p-3 text-cyan-100 hover:bg-white/15">
+                          <span className="flex items-start gap-2"><LinkIcon className="mt-0.5 h-4 w-4 shrink-0" /><span className="line-clamp-3">{message.attachment_url}</span></span>
                         </a>
                       )}
                       {message.content_type === "location" && message.attachment_url && (
-                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="my-2 flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-emerald-800">
-                          <MapPin className="h-5 w-5 shrink-0" />
+                        <a href={message.attachment_url} target="_blank" rel="noopener noreferrer" className="message-link-card my-2 flex items-center gap-2 rounded-xl p-3 text-emerald-50 hover:bg-emerald-300/20">
+                          <MapPin className="h-5 w-5 shrink-0 text-emerald-200" />
                           <span><span className="block font-semibold">Shared location</span><span className="text-xs">{message.location_name || "Open in Maps"}</span></span>
                         </a>
                       )}
                       {!!visibleMessage && (
-                        <p className="whitespace-pre-wrap break-words p-2 text-sm leading-relaxed text-white">{visibleMessage}</p>
+                        <p className="whitespace-pre-wrap break-words px-1 py-1 text-[15px] leading-relaxed text-white">{visibleMessage}</p>
                       )}
-                      <div className="flex items-center justify-end gap-3 pt-2">
+                      <div className="mt-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 border-t border-white/10 pt-2">
                         {message.location_name && message.content_type !== "location" && !isOwnMessage && (
                           <Badge variant="outline" className="text-xs text-gray-500 bg-white">{message.location_name}</Badge>
                         )}
@@ -591,18 +596,19 @@ const Chat = () => {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })
             )}
             <div ref={messagesEndRef} />
           </div>
         )}
+        </div>
       </div>
 
       {/* Message Input */}
-      <div className="safe-area-bottom p-4 sticky bottom-0 border-t-[0.5px] border-blue-200 backdrop-blur-2xl bg-white/10">
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto sm:px-4 px-1">
+      <div className="safe-area-bottom z-20 shrink-0 px-2 pb-2 pt-2 sm:px-5 sm:pb-3">
+        <div className="chat-composer-panel mx-auto max-w-4xl p-2 sm:p-3">
           <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMediaSelected} />
           {showLinkInput && (
             <form onSubmit={shareLink} className="mb-2 flex gap-2">
@@ -633,7 +639,7 @@ const Chat = () => {
             const preview = !target ? "Referenced message" : target.content_type === "image" ? "📷 Photo" : target.content_type === "video" ? "🎥 Video" : target.content_type === "location" ? `📍 ${target.location_name || "Location"}` : target.content_type === "link" ? target.attachment_url : target.message;
             return <div className="mb-2 flex items-center gap-2 rounded-lg border-l-4 border-amber-400 bg-white/15 px-3 py-2 text-sm text-white"><div className="min-w-0 flex-1"><p className="text-xs font-semibold">Replying to {target?.profiles?.full_name || target?.profiles?.username || "message"}</p><p className="truncate text-xs">{preview}</p></div><button type="button" aria-label="Cancel reply" onClick={() => setReplyToMessageId(null)} className="px-2 text-lg">×</button></div>;
           })()}
-          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <div className="mb-2 flex snap-x items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "image/*"; fileInputRef.current.click(); } }} disabled={uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><ImageIcon className="h-4 w-4" /><span>Image</span></Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "video/*"; fileInputRef.current.click(); } }} disabled={uploadingMedia} className="h-9 gap-1 px-2 text-xs text-white"><Video className="h-4 w-4" /><span>Video</span></Button>
             <Button type="button" size="sm" variant="ghost" onClick={shareLocation} className="h-9 gap-1 px-2 text-xs text-white"><MapPin className="h-4 w-4" /><span>Location</span></Button>

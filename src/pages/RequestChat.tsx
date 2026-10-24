@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Send,
@@ -512,10 +513,10 @@ const RequestChat = () => {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col">
+    <div className="app-page flex h-[100dvh] min-h-0 flex-col overflow-hidden text-white">
       {/* Header */}
-      <div className="safe-area-top z-50 border-b-[0.5px] border-blue-200 backdrop-blur-md bg-black/10 sticky top-0 text-shadow-2xl text-white text-shadow-blue-200">
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 ">
+      <div className="glass-header safe-area-top z-30 shrink-0 border-b border-white/20 text-shadow-2xl text-shadow-blue-200">
+        <div className="mx-auto max-w-5xl px-3 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Button
@@ -575,15 +576,15 @@ const RequestChat = () => {
 
       {/* Request Details */}
       {requestLoading ? (
-        <div className="px-1 sm:px-4 py-3">
+        <div className="shrink-0 px-3 py-2 sm:px-5">
           <CardHeader className="rounded-lg border border-white/20 bg-white/10 p-5 py-10 backdrop-blur-md">
             <div className="skeleton-shimmer skeleton-shimmer-on-dark h-4 w-3/4 rounded"></div>
             <div className="skeleton-shimmer skeleton-shimmer-on-dark mt-2 h-3 w-1/2 rounded"></div>
           </CardHeader>
         </div>
       ) : (
-        <div>
-          <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-1 sm:px-4 py-3 ">
+        <div className="shrink-0">
+          <div className="mx-auto max-w-5xl px-3 py-2 sm:px-5">
             <Card>
               <CardHeader className="pb-2">
                 <p className="text-sm font-medium text-gray-900">
@@ -637,7 +638,7 @@ const RequestChat = () => {
       )}
 
       {currentRequest && (
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full px-1 sm:px-4">
+        <div className="mx-auto w-full max-w-5xl shrink-0 px-3 sm:px-5">
           {currentRequest.is_resolved ? (
             <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 flex flex-wrap items-center gap-2">
               <CheckCircle className="h-4 w-4" /> This request has been
@@ -661,7 +662,8 @@ const RequestChat = () => {
       )}
 
       {/* Messages */}
-      <div className="flex-1 max-w-md max-md:max-w-lg md:max-w-3xl mx-auto w-full px-1 sm:px-4 py-4 overflow-y-auto">
+      <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-5 sm:py-5">
+        <div className="mx-auto max-w-4xl">
         {loading ? (
           <div className="space-y-4 py-2" role="status" aria-label="Loading request messages">
             {["start", "end"].map((side, index) => (
@@ -719,7 +721,10 @@ const RequestChat = () => {
                     : fallbackReply.body;
 
                 return (
-                  <div
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
                     key={message.id}
                     ref={(element) => {
                       messageRefs.current[message.id] = element;
@@ -733,9 +738,7 @@ const RequestChat = () => {
                     }`}
                   >
                     <div
-                      className={`chat-message-bubble max-w-[80%] rounded-xl px-4 py-3 border-[0.5px] border-blue-200 backdrop-blur-md bg-white/10
-                        
-                      `}
+                      className="chat-message-bubble w-fit max-w-[88%] rounded-2xl border border-white/25 px-3 py-3 sm:max-w-[72%] sm:px-4"
                     >
                       {!isOwnMessage && (
                         <div className="flex items-center justify-between mb-1">
@@ -747,15 +750,15 @@ const RequestChat = () => {
                             }
                             distance={userDistances[message.user_id]}
                           >
-                            <button className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+                            <button className="flex max-w-full items-center gap-2 rounded-full border border-cyan-100/20 bg-white/10 px-2.5 py-1 hover:bg-white/15">
                               <div
-                                className={`w-2 h-2 rounded-full ${
+                                className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/10 ${
                                   userOnlineStatus[message.user_id]
                                     ? "bg-green-500"
                                     : "bg-gray-400"
                                 }`}
                               ></div>
-                              <span className="text-[13px] font-medium text-blue-600 capitalize">
+                              <span className="max-w-[15rem] truncate text-sm font-semibold text-cyan-100 capitalize">
                                 {userName}
                               </span>
                             </button>
@@ -768,7 +771,7 @@ const RequestChat = () => {
                           onClick={() =>
                             void jumpToMessage(referencedMessageId)
                           }
-                          className="mb-2 block w-full cursor-pointer border-l-2 border-amber-400 bg-black/10 px-2 py-1 text-left text-xs text-white/80 hover:bg-black/20"
+                          className="mb-2 block w-full cursor-pointer rounded-r-xl border-l-2 border-amber-300 bg-white/10 px-3 py-2 text-left text-xs text-white/90 hover:bg-white/15"
                         >
                           <span className="block font-semibold">
                             Replying to{" "}
@@ -790,12 +793,12 @@ const RequestChat = () => {
                                 name: message.attachment_name || undefined,
                               })
                             }
-                            className="block cursor-zoom-in"
+                            className="message-media-button group cursor-zoom-in"
                           >
                             <img
                               src={message.attachment_url}
                               alt={message.attachment_name || "Shared image"}
-                              className="max-h-72 max-w-full rounded-lg object-contain"
+                              className="max-h-[26rem] w-full object-contain transition-transform duration-300 group-hover:scale-[1.015]"
                               loading="lazy"
                             />
                           </button>
@@ -811,13 +814,13 @@ const RequestChat = () => {
                                 name: message.attachment_name || undefined,
                               })
                             }
-                            className="relative block cursor-zoom-in"
+                            className="message-media-button group relative cursor-zoom-in"
                           >
                             <video
                               src={message.attachment_url}
                               muted
                               preload="metadata"
-                              className="max-h-72 max-w-full rounded-lg"
+                              className="max-h-[26rem] w-full object-contain"
                               aria-label={
                                 message.attachment_name || "Shared video"
                               }
@@ -833,10 +836,9 @@ const RequestChat = () => {
                             href={message.attachment_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="my-2 block break-all rounded-lg bg-blue-50 p-3 text-blue-700 underline"
+                            className="message-link-card my-2 block break-all rounded-xl p-3 text-cyan-100 hover:bg-white/15"
                           >
-                            <LinkIcon className="mr-2 inline h-4 w-4" />
-                            {message.attachment_url}
+                            <span className="flex items-start gap-2"><LinkIcon className="mt-0.5 h-4 w-4 shrink-0" /><span className="line-clamp-3">{message.attachment_url}</span></span>
                           </a>
                         )}
                       {message.content_type === "location" &&
@@ -845,9 +847,9 @@ const RequestChat = () => {
                             href={message.attachment_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="my-2 flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-emerald-800"
+                            className="message-link-card my-2 flex items-center gap-2 rounded-xl p-3 text-emerald-50 hover:bg-emerald-300/20"
                           >
-                            <MapPin className="h-5 w-5" />
+                            <MapPin className="h-5 w-5 text-emerald-200" />
                             <span>
                               <strong className="block">Shared location</strong>
                               <span className="text-xs">
@@ -857,12 +859,12 @@ const RequestChat = () => {
                           </a>
                         )}
                       {!!visibleMessage && (
-                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-white">
+                        <p className="whitespace-pre-wrap break-words px-1 py-1 text-[15px] leading-relaxed text-white">
                           {visibleMessage}
                         </p>
                       )}
                       <div
-                        className={`mt-2 flex items-center gap-3 text-xs text-white ${
+                        className={`mt-2 flex flex-wrap items-center gap-3 border-t border-white/10 pt-2 text-xs text-white ${
                           isOwnMessage ? "justify-end" : "justify-start"
                         }`}
                       >
@@ -876,19 +878,20 @@ const RequestChat = () => {
                         <span>{formatChatTime(message.created_at)}</span>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })
             )}
             <div ref={messagesEndRef} />
           </div>
         )}
+        </div>
       </div>
 
       {/* Message Input */}
       {!currentRequest?.is_resolved && (
-        <div className="safe-area-bottom border-t-[0.5px] border-blue-200 backdrop-blur-md bg-black/10 sticky bottom-0 p-4">
-          <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto">
+        <div className="safe-area-bottom z-20 shrink-0 px-2 pb-2 pt-2 sm:px-5 sm:pb-3">
+          <div className="chat-composer-panel mx-auto max-w-4xl p-2 sm:p-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -977,7 +980,7 @@ const RequestChat = () => {
                   ))}
               </div>
             )}
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <div className="mb-2 flex snap-x items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Button
                 type="button"
                 size="sm"

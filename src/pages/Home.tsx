@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useState } from "react";
+import { motion } from "framer-motion";
 import {
   MapPin,
   Users,
@@ -6,11 +7,9 @@ import {
   Clock,
   Navigation,
   LogOut,
-  Map as MapIcon,
   Globe,
   User2Icon,
-  User2,
-  CircleUserRound,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -68,106 +67,100 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-dvh ">
+    <div className="app-page page-enter min-h-dvh text-white">
       {/* Header */}
-      <div className="safe-area-top sticky top-0 z-50 border-b-[0.5px]  border-blue-200 backdrop-blur-xl  bg-black/10 text-shadow-2xl text-white   text-shadow-blue-200 ">
-        <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto px-4 py-4 relative ">
-          <button
-            type="button"
-            aria-label="Open profile"
-            onClick={() => navigate("/profile")}
-            className="absolute -bottom-[15px] left-1/2 z-10 -translate-x-1/2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-blue-600"
-          >
-            <CircleUserRound className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-teal-600 text-white backdrop-blur-xl transition-colors hover:from-blue-700 hover:to-teal-700" />
-          </button>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between space-x-2 ">
+      <header className="safe-area-top glass-header sticky top-0 z-40 border-b text-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/30 bg-gradient-to-br from-sky-300/40 to-teal-300/25 shadow-inner">
               <MapPin className="h-5 w-5" />
-              <div>
-                <p className="text-sm">Your location</p>
-                {userLocation ? (
-                  <p
-                    className="font-semibold truncate max-w-[160px] sm:max-w-[220px]"
-                    title={userLocation.name}
-                  >
-                    {getDisplayLocation(userLocation.name)}
-                  </p>
-                ) : locationLoading ? (
-                  <p className="font-semibold flex items-center gap-1.5 text-blue-100">
-                    <span className="loading-spinner inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white"></span>
-                    Finding your location…
-                  </p>
-                ) : (
-                  <p className="font-semibold text-sm text-blue-100">Location unavailable</p>
-                )}
-              </div>
             </div>
-
-            <div className="flex items-center justify-center space-x-3">
-              <div className="text-right">
-                <div className="flex items-center space-x-1 text-green-600">
-                  <Users className="h-4 w-4 text-white" />
-                  <span className="text-sm font-medium  text-white">
-                    {nearbyUsersCount}
-                  </span>
-                </div>
-                <p className="text-xs ">Nearby</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSignOut}
-                className="p-2"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/65">Nearby Aid</p>
+              {userLocation ? (
+                <p className="truncate text-sm font-semibold" title={userLocation.name}>{getDisplayLocation(userLocation.name)}</p>
+              ) : locationLoading ? (
+                <p className="flex items-center gap-2 text-sm text-white/75"><span className="loading-spinner h-3 w-3 rounded-full border-2 border-white/35 border-t-white" />Locating you</p>
+              ) : <p className="text-sm text-white/65">Location unavailable</p>}
             </div>
           </div>
-          {user && (
-            <p className="text-xs text-shadow-2xl text-white text-shadow-blue-200 mt-1">
-              Welcome,{" "}
-              <span className=" font-bold capitalize">
-                {getUserDisplayName()}
-              </span>
-            </p>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-medium sm:flex">
+              <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_#6ee7b7]" />
+              <Users className="h-3.5 w-3.5" />
+              {nearbyUsersCount} nearby
+            </div>
+            <Button type="button" variant="ghost" size="icon" aria-label="Open profile" onClick={() => navigate("/profile")} className="h-10 w-10 rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20">
+              <span className="text-sm font-bold">{getUserDisplayName().slice(0, 1).toUpperCase()}</span>
+            </Button>
+            <Button type="button" variant="ghost" size="icon" aria-label="Sign out" onClick={handleSignOut} className="h-10 w-10 rounded-full text-white/75 hover:bg-white/10 hover:text-white">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-md max-md:max-w-lg md:max-w-3xl mx-auto sm:px-4 px-1 py-6 space-y-6">
-        {/* Ask for Help Button */}
-        <div className="fixed bottom-[calc(2.5rem+env(safe-area-inset-bottom,0px))] right-3 z-50 rounded-xl shadow-md shadow-black/20">
-          <Button
-            onClick={() => navigate("/ask-help")}
-            className="rounded-xl  bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            <MessageCircle className="sm:mr-2 h-5 w-5" />
-            <span className="">Ask for Help</span>
-          </Button>
-        </div>
+      <main className="mx-auto max-w-6xl space-y-6 px-4 pb-32 pt-5 sm:px-6 sm:pb-12 sm:pt-8">
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.2, 0.75, 0.25, 1] }}
+          className="glass-panel relative isolate overflow-hidden rounded-[2rem] p-5 sm:p-8 lg:p-10"
+        >
+          <div className="pointer-events-none absolute -right-10 -top-20 -z-10 h-64 w-64 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-[-7rem] right-[24%] -z-10 h-56 w-56 rounded-full bg-fuchsia-300/20 blur-3xl" />
+          <div className="grid items-center gap-6 md:grid-cols-[1fr_auto] md:gap-10">
+            <div className="max-w-2xl">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/85">
+                <Sparkles className="h-3.5 w-3.5 text-amber-200" /> Local care, made easier
+              </div>
+              <p className="mb-2 text-sm font-medium text-white/70">Welcome back, {getUserDisplayName().split("@")[0]}</p>
+              <h1 className="text-balance text-3xl font-semibold leading-[1.08] tracking-tight sm:text-4xl lg:text-5xl">Good neighbors make <span className="text-cyan-100">stronger</span> communities.</h1>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">Ask for a hand, offer what you can, and find support from people close by.</p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Button onClick={() => navigate("/ask-help")} className="h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-teal-500 px-5 text-white shadow-lg shadow-blue-950/20 hover:from-blue-400 hover:to-teal-400">
+                  <MessageCircle className="mr-2 h-4 w-4" /> Ask for help
+                </Button>
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/85 sm:hidden">
+                  <Users className="h-4 w-4" /> {nearbyUsersCount} nearby
+                </div>
+              </div>
+            </div>
+            <motion.div
+              aria-hidden="true"
+              animate={{ y: [0, -7, 0], rotate: [0, 1.5, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              className="mx-auto hidden h-40 w-40 items-center justify-center rounded-[2.5rem] border border-white/25 bg-white/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.3),0_24px_60px_rgb(34_47_120/0.2)] md:flex lg:h-48 lg:w-48"
+            >
+              <div className="grid h-24 w-24 place-items-center rounded-full border border-white/40 bg-gradient-to-br from-cyan-200/45 to-teal-300/15 shadow-[0_0_60px_rgb(125_231_255/0.2)]">
+                <MapPin className="h-11 w-11 text-white" strokeWidth={1.5} />
+              </div>
+            </motion.div>
+          </div>
+        </motion.section>
 
         {/* Map Section */}
 
-        <div className=" flex flex-col md:flex-row gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           {/* Location Filter Toggle */}
           <Button
             onClick={toggleLocationFilter}
             variant="outline"
-            className={`w-full h-12 transition-all duration-200 ${
+            className={`h-12 w-full rounded-2xl border-white/25 bg-white/10 text-white hover:border-white/50 hover:bg-white/15 ${
               showAllLocations
-                ? "border-orange-200 text-orange-600 hover:bg-orange-50"
-                : "border-green-200 text-green-600 hover:bg-green-50"
+                ? "ring-1 ring-amber-200/25"
+                : "ring-1 ring-emerald-200/20"
             }`}
           >
             {!showAllLocations ? (
               <>
                 <Globe className="mr-2 h-5 w-5" />
-                Show requests from all Locations
+                Show all locations
               </>
             ) : (
               <>
                 <MapPin className="mr-2 h-5 w-5" />
-                Show users Within 10km
+                Nearby requests · 10 km
               </>
             )}
           </Button>
@@ -176,34 +169,32 @@ const Home = () => {
           <Button
             onClick={() => setShowMap(!showMap)}
             variant="outline"
-            className="w-full h-12 border-blue-200 text-blue-600 hover:bg-blue-50"
+            className="h-12 w-full rounded-2xl border-white/25 bg-white/10 text-white hover:bg-white/15"
           >
             <User2Icon className="mr-2 h-5 w-5" />
             {showMap ? "Hide" : "Show"} Live Users
           </Button>
         </div>
         {showMap && (
-          <div className="animate-in transition-all">
-            <Suspense fallback={<div role="status" className="h-72 animate-pulse rounded-lg bg-white/10" />}>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="overflow-hidden">
+            <Suspense fallback={<div role="status" className="glass-panel h-72 animate-pulse rounded-3xl" />}>
               <Map />
             </Suspense>
-          </div>
+          </motion.div>
         )}
 
         {/* Recent Help Requests */}
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-shadow-2xl text-white   text-shadow-blue-200">
-              {showAllLocations ? "All Requests" : "Nearby Requests"}
-            </h2>
-            {/* <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/chat")}
-              className=" text-white"
-            >
-              View All
-            </Button> */}
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Community board</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                {showAllLocations ? "All requests" : "Nearby requests"}
+              </h2>
+            </div>
+            <span className="shrink-0 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/75">
+              {loading ? "Updating…" : `${helpRequests.length} ${helpRequests.length === 1 ? "request" : "requests"}`}
+            </span>
           </div>
 
           {loading ? (
@@ -211,7 +202,7 @@ const Home = () => {
               {[1, 2, 3].map((i) => (
                 <Card
                   key={i}
-                  className="h-44 overflow-hidden rounded-2xl border-[0.5px] border-blue-200 bg-white/10 backdrop-blur-xl"
+                  className="glass-panel h-44 animate-pulse overflow-hidden rounded-3xl"
                 >
                   <CardHeader className="pb-3">
                     <div className="skeleton-shimmer skeleton-shimmer-on-dark h-4 w-3/4 rounded"></div>
@@ -225,31 +216,49 @@ const Home = () => {
               ))}
             </div>
           ) : (
-            <div className="home-request-list space-y-4 mb-32">
+            <div className="home-request-list grid gap-4 pb-8 md:grid-cols-2">
               {helpRequests.length === 0 ? (
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <p className="text-gray-500">
+                <Card className="glass-panel rounded-3xl md:col-span-2">
+                  <CardContent className="p-8 text-center sm:p-12">
+                    <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-white/25 bg-white/10">
+                      <MessageCircle className="h-6 w-6 text-white/80" />
+                    </div>
+                    <p className="font-medium text-white">
                       {showAllLocations
                         ? "No help requests yet. Be the first to ask for help!"
                         : "No help requests nearby. Try expanding to all locations."}
                     </p>
+                    {!showAllLocations && <p className="mt-2 text-sm text-white/65">We’ll show requests from your community here.</p>}
                   </CardContent>
                 </Card>
               ) : (
-                helpRequests.map((request) => (
-                  <Card
+                helpRequests.map((request, index) => (
+                  <motion.div
                     key={request.id}
+                    layout
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: Math.min(index * 0.045, 0.25) }}
+                    whileHover={{ y: -3 }}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleRequestReply(request.id)}
-                    className="home-request-card rounded-xl border-[0.5px] cursor-pointer border-blue-200 backdrop-blur-md bg-white/10 text-white hover:border-white/50 hover:bg-white/15 hover:shadow-lg"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleRequestReply(request.id);
+                      }
+                    }}
+                    className="home-request-card cursor-pointer rounded-3xl focus-visible:outline-none"
                   >
-                    <CardHeader className="pb-1">
+                    <Card className="glass-panel h-full rounded-3xl text-white transition-colors hover:border-white/45 hover:bg-white/15">
+                    <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
                             <Badge
                               variant="outline"
-                              className={`text-xs ${getCategoryColor(
+                              className={`border-white/25 bg-white/15 text-white ${getCategoryColor(
                                 request.category
                               )}`}
                             >
@@ -261,57 +270,53 @@ const Home = () => {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-md capitalize font-medium first-letter:text-xl  first-letter:font-bold text-white text-shadow-blue-200  text-shadow-2xl leading-relaxed p-2">
+                          <p className="line-clamp-4 break-words px-1 py-1 text-base font-medium leading-relaxed text-white sm:text-[17px]">
                             {request.message}
                           </p>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <span className="text-sm capitalize italic">
-                        by{" "}
-                        <span className="font-bold">
+                      <span className="text-sm text-white/65">
+                        Posted by{" "}
+                        <span className="font-semibold text-white/90">
                           {request.profiles?.full_name ||
                             request.profiles?.username ||
                             "Anonymous"}
                         </span>
                       </span>
 
-                      <div className="flex justify-between mt-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex text-[10px] sm:text-xs gap-4  text-white text-shadow-blue-200  text-shadow-2xl">
-                            <div className="flex gap-0.5 ">
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/75">
+                            <div className="flex items-center gap-1.5">
                               <Clock className="h-3 w-3" />
                               <span>{formatTime(request.created_at)}</span>
                             </div>
-                            <div className="flex gap-0.5 items-center ">
+                            <div className="flex items-center gap-1.5">
                               <Navigation className="h-3 w-3" />
-                              {/* <span>
-                                {request.distance_km.toFixed(1)} km away
-                              </span> */}
                               {request.distance_km
                                 ? `${request.distance_km.toFixed(1)} km away`
                                 : "Distance unknown"}
                             </div>
                           </div>
-                        </div>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleRequestReply(request.id)}
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50 rounded-xl"
+                          className="h-9 shrink-0 rounded-xl border-white/25 bg-white/10 px-4 text-white hover:bg-white/20"
                         >
                           Reply
                         </Button>
                       </div>
                     </CardContent>
-                  </Card>
+                    </Card>
+                  </motion.div>
                 ))
               )}
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 };
