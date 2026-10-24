@@ -151,7 +151,23 @@ export function useHelpRequests() {
 
       // Refresh the list
       fetchHelpRequests();
-      return { data };
+      let notificationError: string | null = null;
+      try {
+        const { data: notificationResult, error } = await supabase.functions.invoke(
+          'notify-nearby-request',
+          { body: { requestId: data.id } },
+        );
+        notificationError = error?.message ||
+          (notificationResult?.failed > 0 ? 'Some nearby notifications could not be delivered.' : null);
+      } catch (error) {
+        notificationError = error instanceof Error
+          ? error.message
+          : 'Nearby notifications could not be confirmed.';
+      }
+      return {
+        data,
+        notificationError,
+      };
     } catch (error) {
       console.error('Unexpected error creating help request:', error);
       return { error: 'Failed to create help request. Please try again.' };

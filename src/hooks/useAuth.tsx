@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { reverseGeocode } from "@/utils/geocoding";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
+import { takeFcmToken } from "@/lib/pushRegistration";
 
 interface AuthContextType {
   user: User | null;
@@ -329,6 +330,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    if (user && Capacitor.isNativePlatform()) {
+      const token = takeFcmToken();
+      if (token) {
+        const { error: tokenError } = await supabase.rpc(
+          "unregister_android_push_token",
+          { p_token: token }
+        );
+        if (tokenError) {
+          console.error("Could not remove device notification registration:", tokenError.code);
+        }
+      }
+    }
+
     if (user && userLocation) {
       console.log("Setting user offline before sign out");
       await updateUserLocationAndStatus(

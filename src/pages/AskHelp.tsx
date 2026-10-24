@@ -58,7 +58,7 @@ const AskHelp = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await createHelpRequest({
+      const { error, notificationError } = await createHelpRequest({
         category,
         message: message.trim(),
         is_urgent: isUrgent,
@@ -74,7 +74,9 @@ const AskHelp = () => {
       } else {
         toast({
           title: "Help Request Sent!",
-          description: "Your request has been shared with nearby users.",
+          description: notificationError
+            ? `Your request is posted, but nearby push notifications could not be confirmed. ${notificationError}`
+            : "Your request was posted and sent to nearby registered Android devices.",
         });
         navigate("/");
       }

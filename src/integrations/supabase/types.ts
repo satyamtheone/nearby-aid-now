@@ -121,6 +121,72 @@ export type Database = {
           },
         ]
       }
+      device_push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      request_push_deliveries: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          id: string
+          last_error_code: string | null
+          push_token_id: string
+          recipient_id: string
+          request_id: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          push_token_id: string
+          recipient_id: string
+          request_id: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          push_token_id?: string
+          recipient_id?: string
+          request_id?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           age: number | null
@@ -325,6 +391,22 @@ export type Database = {
       }
     }
     Functions: {
+      claim_request_push_delivery: {
+        Args: { p_delivery_id: string }
+        Returns: boolean
+      }
+      get_request_push_targets: {
+        Args: { p_request_id: string }
+        Returns: { push_token_id: string; recipient_id: string; token: string }[]
+      }
+      register_android_push_token: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
+      unregister_android_push_token: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
       _postgis_deprecate: {
         Args: { oldname: string; newname: string; version: string }
         Returns: undefined

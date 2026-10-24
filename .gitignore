@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Firebase client config and local Edge Function secrets
+android/app/google-services.json
+supabase/functions/.env
+firebase-service-account*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
