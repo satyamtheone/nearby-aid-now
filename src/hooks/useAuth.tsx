@@ -6,6 +6,7 @@ import { reverseGeocode } from "@/utils/geocoding";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { takeFcmToken } from "@/lib/pushRegistration";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
@@ -60,11 +61,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string;
   }> => {
     const coords = Capacitor.isNativePlatform()
-      ? await Geolocation.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 60000,
-        }).then(({ coords: position }) => position)
+      ? await (async () => {
+          let permission = await Geolocation.checkPermissions();
+          if (permission.coarseLocation !== "granted" && permission.location !== "granted") {
+            permission = await Geolocation.requestPermissions({ permissions: ["coarseLocation"] });
+          }
+          if (permission.coarseLocation !== "granted" && permission.location !== "granted") {
+            throw new Error("Location permission was not granted");
+          }
+          return Geolocation.getCurrentPosition({
+            // Approximate location is sufficient for the app's nearby help radius.
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 60000,
+          }).then(({ coords: position }) => position);
+        })()
       : await new Promise<GeolocationPosition>((resolve, reject) => {
           if (!navigator.geolocation) {
             reject(new Error("Geolocation is not supported by this browser"));
@@ -235,6 +246,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Error initializing location:", error);
       // Never substitute a fixed location: it could expose the wrong nearby users.
       setUserLocation(null);
+      const message = error instanceof Error ? error.message : String(error);
+      toast({
+        title: /permission|denied/i.test(message) ? "Location permission needed" : "Could not get your location",
+        description: /permission|denied/i.test(message)
+          ? "Allow approximate location for Nearby Aid Now in Android app permissions to see nearby requests."
+          : "Check that location services are on, then reopen the app.",
+        variant: "destructive",
+      });
     } finally {
       setLocationLoading(false);
     }
